@@ -26,3 +26,5 @@ LinkingTo:
     rstan (>= 2.18.1),
     StanHeaders (>= 2.18.0)
 SystemRequirements: GNU make
+URL: https://github.com/Caius-Gibeily/BlinkR
+BugReports: https://github.com/Caius-Gibeily/BlinkR/issues
