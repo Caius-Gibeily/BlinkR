@@ -8,6 +8,13 @@
 #' @useDynLib BlinkR, .registration = TRUE
 #' @import methods
 #' @import Rcpp
+#' @import dplyr
+#' @import tidyr
+#' @import purrr
+#' @import MASS
+#' @import rkriging
+#' @import tibble
+#' @import flexsurv
 #' @importFrom rstan sampling
 #' @importFrom rstantools rstan_config
 #' @importFrom RcppParallel RcppParallelLibs

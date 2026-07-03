@@ -1,4 +1,4 @@
-#' Simulate Spline Trajectories
+#' Simulate Latent Trajectories (splines, gaussian processes and boxcars)
 #'
 #' @param duration Integer. The length of the time series.
 #' @param n_ind Integer. Number of individuals.
@@ -24,8 +24,8 @@ simulate_spline_trajectories <- function(duration = 100, n_ind = 10, n_groups = 
                             df = df, mu_coeffs = group_traces$coeffs[, sim_struct$group, drop = FALSE],
                             sd_coeffs = sd_ind)
 
-  ind_traces$traces <- ind_traces$traces %>%
-    dplyr::left_join(sim_struct, by = "row_id") %>%
+  ind_traces$traces <- ind_traces$traces |>
+    dplyr::left_join(sim_struct, by = "row_id") |>
     dplyr::relocate(group, ind)
 
   return(ind_traces)
@@ -63,8 +63,8 @@ simulate_boxcar_trajectories <- function(duration = 100, n_ind = 10, n_groups = 
                             nodes = nodes, steps = steps,
                             cycles = cycles, scale_factor = scale_factors_ind)
 
-  ind_traces$traces <- ind_traces$traces %>%
-    dplyr::left_join(sim_struct, by = "row_id") %>%
+  ind_traces$traces <- ind_traces$traces |>
+    dplyr::left_join(sim_struct, by = "row_id") |>
     dplyr::relocate(group, ind)
 
   return(ind_traces)
@@ -84,7 +84,7 @@ simulate_boxcar_trajectories <- function(duration = 100, n_ind = 10, n_groups = 
 #'
 #' @return A list containing `group_traces` and `ind_traces`.
 #' @export
-simulate_gp_trajectories <- function(duration = 100, n_ind = 10, n_groups = 1,
+simulate_gp_trajectories <- function(duration = 100, n_groups = 1, n_ind = 10,
                                      kernel = "squared_exp",
                                      alpha_global = 0.5, rho_global = duration / 2,
                                      alpha_group = 0.5, rho_group = duration / 2,
@@ -104,15 +104,15 @@ simulate_gp_trajectories <- function(duration = 100, n_ind = 10, n_groups = 1,
 
   group_traces <- .simulate_n(duration, n = n_groups, class = "gp",
                               kernel = kernel, alpha = alpha_group,
-                              rho = rho_group, nu = nu, P = P, level = "group") %>%
+                              rho = rho_group, nu = nu, P = P, level = "group") |>
     dplyr::mutate(y = y + global_trace$y)
 
-  ind_traces <- .simulate_n(duration, n = n_ind, class = "gp",
+  ind_traces <- .simulate_n(duration, n = n_groups *n_ind, class = "gp",
                             kernel = kernel, alpha = alpha_ind,
-                            rho = rho_ind, nu = nu, P = P) %>%
-    dplyr::left_join(sim_struct, by = "row_id") %>%
-    dplyr::left_join(group_traces, by = c("group", "x"), suffix = c("_ind", "_group")) %>%
-    dplyr::mutate(y = y_ind + y_group) %>%
+                            rho = rho_ind, nu = nu, P = P) |>
+    dplyr::left_join(sim_struct, by = "row_id") |>
+    dplyr::left_join(group_traces, by = c("group", "x"), suffix = c("_ind", "_group")) |>
+    dplyr::mutate(y = y_ind + y_group) |>
     dplyr::relocate(group, ind, .after = "row_id")
 
   return(ind_traces)
@@ -125,6 +125,8 @@ simulate_gp_trajectories <- function(duration = 100, n_ind = 10, n_groups = 1,
 #' @noRd
 .simulate_n <- function(duration, n, class, df = 5, mu_coeffs = 0, sd_coeffs = 0.5,
                         level = "row_id", nodes, steps, cycles, scale_factor = 1, ...) {
+  class = match.arg(class,c("spline","boxcar","gp"))
+
   if (class == "spline") {
     if (length(sd_coeffs) != 1 && length(sd_coeffs) != df) {
       stop("Spline standard deviations length must equal 1 or df.")
@@ -134,20 +136,20 @@ simulate_gp_trajectories <- function(duration = 100, n_ind = 10, n_groups = 1,
     }
 
     coeffs <- matrix(stats::rnorm(n * df, mu_coeffs, sd_coeffs), nrow = df, ncol = n)
-    traces <- purrr::map(1:n, \(i) .sim_splines(duration, df, coeffs[, i, drop = FALSE], ...)) %>%
+    traces <- purrr::map(1:n, \(i) .sim_splines(duration, df, coeffs[, i, drop = FALSE], ...)) |>
       purrr::list_rbind(names_to = level)
 
     return(list(traces = traces, coeffs = coeffs))
 
   } else if (class == "boxcar") {
     level_steps <- as.matrix(steps) %*% t(scale_factor)
-    traces <- purrr::map(1:n, \(i) .sim_boxcar(duration, nodes, level_steps[, i], cycles)) %>%
+    traces <- purrr::map(1:n, \(i) .sim_boxcar(duration, nodes, level_steps[, i], cycles)) |>
       purrr::list_rbind(names_to = level)
 
     return(list(traces = traces, scales = level_steps))
 
   } else if (class == "gp") {
-    traces <- purrr::map(1:n, \(i) .sim_GP(duration, ...)) %>%
+    traces <- purrr::map(1:n, \(i) .sim_GP(duration, ...)) |>
       purrr::list_rbind(names_to = level)
 
     return(traces)
@@ -175,7 +177,7 @@ simulate_gp_trajectories <- function(duration = 100, n_ind = 10, n_groups = 1,
   if (any(diff(nodes) / cycles < 1)) warning("Number of cycles smaller than step grid resolution")
 
   interval_id <- findInterval(1:(nodes[length(nodes)] / cycles),
-                                     nodes / cycles, rightmost.closed = TRUE) %>%
+                                     nodes / cycles, rightmost.closed = TRUE) |>
     rep_len(duration)
 
   return(tibble::tibble(x = 1:duration, y = steps[interval_id]))
@@ -184,7 +186,7 @@ simulate_gp_trajectories <- function(duration = 100, n_ind = 10, n_groups = 1,
 #' @noRd
 .kernel <- function(duration, kernel, alpha, rho, nu, P) {
   X <- seq(1, duration, by = 1)
-
+  kernel = match.arg(kernel,c("squared_exp","matern","rational_quad","periodic"))
   if (kernel == "squared_exp") {
     K <- rkriging::Gaussian.Kernel(rho)
     cov_mat <- alpha^2 * rkriging::Evaluate.Kernel(K, X)
@@ -196,8 +198,6 @@ simulate_gp_trajectories <- function(duration = 100, n_ind = 10, n_groups = 1,
     cov_mat <- alpha^2 * rkriging::Evaluate.Kernel(K, X)
   } else if (kernel == "periodic") {
     cov_mat <- alpha^2 * .periodic_kernel(duration, rho, P)
-  } else {
-    stop("Please choose among squared_exp, matern, rational_quad and periodic")
   }
   return(cov_mat)
 }
