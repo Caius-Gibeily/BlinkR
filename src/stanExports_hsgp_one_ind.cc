@@ -2,12 +2,12 @@
 
 #include <Rcpp.h>
 using namespace Rcpp ;
-#include "stanExports_hsgp_updated.h"
+#include "stanExports_hsgp_one_ind.h"
 
-RCPP_MODULE(stan_fit4hsgp_updated_mod) {
+RCPP_MODULE(stan_fit4hsgp_one_ind_mod) {
 
 
-    class_<rstan::stan_fit<stan_model, boost::ecuyer1988> >("rstantools_model_hsgp_updated")
+    class_<rstan::stan_fit<stan_model, boost::ecuyer1988> >("rstantools_model_hsgp_one_ind")
 
     .constructor<SEXP,SEXP,SEXP>()
 

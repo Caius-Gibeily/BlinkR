@@ -12,17 +12,16 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // simulate_renewal
-NumericVector simulate_renewal(std::vector<double> time_vec, std::vector<double> modulant_vec, double mu, double sigma, double Q);
-RcppExport SEXP _BlinkR_simulate_renewal(SEXP time_vecSEXP, SEXP modulant_vecSEXP, SEXP muSEXP, SEXP sigmaSEXP, SEXP QSEXP) {
+NumericVector simulate_renewal(std::vector<double> time_vec, std::vector<double> modulant_vec, double sigma, double Q);
+RcppExport SEXP _BlinkR_simulate_renewal(SEXP time_vecSEXP, SEXP modulant_vecSEXP, SEXP sigmaSEXP, SEXP QSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::vector<double> >::type time_vec(time_vecSEXP);
     Rcpp::traits::input_parameter< std::vector<double> >::type modulant_vec(modulant_vecSEXP);
-    Rcpp::traits::input_parameter< double >::type mu(muSEXP);
     Rcpp::traits::input_parameter< double >::type sigma(sigmaSEXP);
     Rcpp::traits::input_parameter< double >::type Q(QSEXP);
-    rcpp_result_gen = Rcpp::wrap(simulate_renewal(time_vec, modulant_vec, mu, sigma, Q));
+    rcpp_result_gen = Rcpp::wrap(simulate_renewal(time_vec, modulant_vec, sigma, Q));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -41,12 +40,16 @@ BEGIN_RCPP
 END_RCPP
 }
 
-RcppExport SEXP _rcpp_module_boot_stan_fit4hsgp_updated_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4hsgp_multi_group_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4hsgp_one_group_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4hsgp_one_ind_mod();
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_BlinkR_simulate_renewal", (DL_FUNC) &_BlinkR_simulate_renewal, 5},
+    {"_BlinkR_simulate_renewal", (DL_FUNC) &_BlinkR_simulate_renewal, 4},
     {"_BlinkR_simulate_renewal_orig", (DL_FUNC) &_BlinkR_simulate_renewal_orig, 4},
-    {"_rcpp_module_boot_stan_fit4hsgp_updated_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4hsgp_updated_mod, 0},
+    {"_rcpp_module_boot_stan_fit4hsgp_multi_group_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4hsgp_multi_group_mod, 0},
+    {"_rcpp_module_boot_stan_fit4hsgp_one_group_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4hsgp_one_group_mod, 0},
+    {"_rcpp_module_boot_stan_fit4hsgp_one_ind_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4hsgp_one_ind_mod, 0},
     {NULL, NULL, 0}
 };
 

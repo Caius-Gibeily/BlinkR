@@ -56,7 +56,7 @@ public:
       return boost::math::cdf(pgamma,expnu);
 
     } else {
-      return R::plnorm(q, mu, sigma);
+      return R::plnorm(q, mu, sigma,1,0);
     }
   }
 

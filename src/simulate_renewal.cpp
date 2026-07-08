@@ -1,14 +1,11 @@
 #include <Rcpp.h>
+#include "gengamma.h" // based on code by Christopher Jackson et al. (flexsurv package)
+
 using namespace Rcpp;
 
 // [[Rcpp::export]]
 NumericVector simulate_renewal(std::vector<double> time_vec, std::vector<double> modulant_vec,
-                                    double mu, double sigma, double Q) {
-
-  Environment flexsurv = Environment::namespace_env("flexsurv");
-
-  Function dgengamma = flexsurv["dgengamma"];
-  Function pgengamma = flexsurv["pgengamma"];
+                                    double sigma, double Q) {
 
   std::vector<double> event_times;
   event_times.reserve(1000);
@@ -17,20 +14,42 @@ NumericVector simulate_renewal(std::vector<double> time_vec, std::vector<double>
   double last_event = 1.0;
   event_times.push_back(last_event);
 
-  for (int ti = 1; ti < time_vec.size(); ti++) {
+  gengamma::density gen_pdf;
+  gengamma::cdf gen_cdf;
 
-    double pdf = as<double>(dgengamma(time_vec[ti] - last_event, _["mu"] = modulant_vec, _["sigma"] = sigma, _["Q"] = Q));
-    double cdf = as<double>(pgengamma(time_vec[ti] - last_event, _["mu"] = modulant_vec, _["sigma"] = sigma, _["Q"] = Q));
+  int n = time_vec.size();
+  int ti = 0;
 
-    double h_t = t_diff * (pdf / (1.0 - cdf));
+  double H_threshold = R::rexp(1);
+  double H_level = 0;
 
+  while (ti < n) {
+    double dt = time_vec[ti] - last_event;
 
-    double accept_p = R::unif_rand();
-    if (accept_p <= h_t) {
+    if (dt < 0) {
+      ti++;
+      continue;
+    }
+
+    double current_mu = modulant_vec[ti];
+
+    double pdf = gen_pdf(dt, current_mu, sigma, Q);
+    double cdf = gen_cdf(dt, current_mu, sigma, Q);
+
+    double surv = std::max(1.0 - cdf, 1e-15);
+    double h_t = t_diff * pdf / surv;
+
+    H_level += h_t;
+
+    if (H_level >= H_threshold) {
       event_times.push_back(time_vec[ti]);
       last_event = time_vec[ti];
-    }
-  }
-  return(wrap(event_times));
-}
 
+      H_level = 0;
+      H_threshold = R::rexp(1);
+    }
+    ti++;
+  }
+
+  return wrap(event_times);
+}

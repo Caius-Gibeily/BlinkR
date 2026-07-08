@@ -1,53 +1,60 @@
-#' @param sigma Numeric. Individual-level coefficient standard deviation.
-#' @param Q Numeric. Mean coefficients for the spline basis.
-#' @param baseline Numeric. Group-level coefficient standard deviation.
-#' @param baseline_sd Numeric. Individual-level coefficient standard deviation.
-#' @param lerp Numeric. Mean coefficients for the spline basis.
-#'
+#' Parse priors
 #' @return A tibble containing simulated event times for each group.
 #' @export
-
 parse_priors <- function(model_setup, ...) {
   UseMethod("parse_priors")
 }
 
+#' @export
+#' @method parse_priors one_ind
 parse_priors.one_ind <- function(model_setup) {
-  valid_variables = c("z","mu","alpha","rho") %>%
+  valid_variables = c("mu","alpha","rho") %>%
     append(.get_family_priors(model_setup$settings$family))
 
-  prior_frame <- .process_prior_frame(path = "inst/extdata/default_priors_one-ind.csv",
+  prior_frame <- .process_prior_frame(path = "inst/extdata/default_priors_one_ind.csv",
                                       valid_variables = valid_variables,
                                       priors = model_setup$settings$priors)
+  print(prior_frame)
+  return(prior_frame)
 }
 
+#' @export
+#' @method parse_priors one_group
 parse_priors.one_group <- function(model_setup) {
-  valid_variables = c("z_group","z_ind", "mu","alpha_group",
+  valid_variables = c("mu","alpha_group",
                       "alpha_ind", "rho_group","rho_ind") %>%
     append(.get_family_priors(model_setup$settings$family))
 
-  prior_frame <- .process_prior_frame(path = "inst/extdata/default_priors_one-group.csv",
+  prior_frame <- .process_prior_frame(path = "inst/extdata/default_priors_one_group.csv",
                                       valid_variables = valid_variables,
                                       priors = model_setup$settings$priors)
 }
 
+#' @export
+#' @method parse_priors multi_group
 parse_priors.multi_group <- function(model_setup) {
-  valid_variables = c("z_pop","z_group","z_ind","mu_group","mu_ind","alpha_pop",
-                      "alpha_group","alpha_ind", "rho_pop","rho_group","rho_ind") %>%
+  valid_variables = c("mu_group","mu_ind","alpha_global",
+                      "alpha_group","alpha_ind", "rho_global","rho_group","rho_ind") %>%
     append(.get_family_priors(model_setup$settings$family))
 
-  prior_frame <- .process_prior_frame(path = "inst/extdata/default_priors_multi-group.csv",
+  prior_frame <- .process_prior_frame(path = "inst/extdata/default_priors_multi_group.csv",
                                       valid_variables = valid_variables,
                                       priors = model_setup$settings$priors)
 }
 
+#############
+# Helpers
+#############
+#' @noRd
 .get_family_priors <- function(family) {
 
   if (family == "gamma") return("k")
   else if (family == "weibull") return("shape")
   else if (family == "gengamma") return(c("k","shape"))
-  else if (family == "lognormal") return(c("mu_lnorm","sigma_lnorm"))
+  else if (family == "lognormal") return(c("mu_lognormal","sigma_lognormal"))
 }
 
+#' @noRd
 .process_prior_frame <- function(path, valid_variables, priors = NULL) {
   # e.g.
   # prior_set <- alist(
@@ -69,10 +76,12 @@ parse_priors.multi_group <- function(model_setup) {
   #   k ~ exp(0.5),
   #   shape ~ exp(0.5)
   # )
-
-  prior_frame <- readr::read_csv(csv_path, show_col_types = FALSE)
+  dists <- c("normal", "lognormal", "cauchy", "exp")
+  prior_frame <- readr::read_csv(path, show_col_types = FALSE)
 
   if (missing(priors) || is.null(priors)) {
+    prior_frame <- prior_frame %>%
+      mutate(distribution_id = match(distribution,dists))
     return(prior_frame)
   }
 
@@ -88,7 +97,7 @@ parse_priors.multi_group <- function(model_setup) {
     dist_data <- formula[[3]]
     dist_name <- as.character(dist_data[[1]])
 
-    if (!(dist_name %in% c("normal", "lognormal", "cauchy", "exp"))) {
+    if (!(dist_name %in% dists)) {
       stop("Supported distributions: normal, lognormal, cauchy, or exp.")
     }
 
@@ -106,6 +115,8 @@ parse_priors.multi_group <- function(model_setup) {
       prior_frame[prior_frame$prior_variable == prior_variable, c("param_1", "param_2")] <- dist_args
     }
   }
-
+  prior_frame <- prior_frame %>%
+    filter(prior_variable %in% valid_variables) %>%
+    mutate(distribution_id = match(distribution,dists))
   return(prior_frame)
 }

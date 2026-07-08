@@ -2,7 +2,7 @@
 % Please edit documentation in R/simulate_trajectories.R
 \name{simulate_spline_trajectories}
 \alias{simulate_spline_trajectories}
-\title{Simulate Spline Trajectories}
+\title{Simulate Latent Trajectories (splines, gaussian processes and boxcars)}
 \usage{
 simulate_spline_trajectories(
   duration = 100,
@@ -33,5 +33,5 @@ simulate_spline_trajectories(
 A list containing \code{group_traces} and \code{ind_traces}.
 }
 \description{
-Simulate Spline Trajectories
+Simulate Latent Trajectories (splines, gaussian processes and boxcars)
 }

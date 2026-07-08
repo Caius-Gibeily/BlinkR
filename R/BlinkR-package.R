@@ -11,11 +11,11 @@
 #' @import dplyr
 #' @import tidyr
 #' @import purrr
-#' @import MASS
 #' @import rkriging
 #' @import tibble
 #' @import flexsurv
-#' @importFrom rstan sampling
+#' @import rstan
+#' @importFrom MASS mvrnorm
 #' @importFrom rstantools rstan_config
 #' @importFrom RcppParallel RcppParallelLibs
 #'

@@ -1,0 +1,6 @@
+﻿prior_variable,distribution,param_1,param_2
+mu,normal,0,1
+alpha,normal,0.4,0.5
+rho,lognormal,5,0.8
+k,exp,0.5,0
+shape,exp,0.5,0

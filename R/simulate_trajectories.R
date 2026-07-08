@@ -186,7 +186,7 @@ simulate_gp_trajectories <- function(duration = 100, n_groups = 1, n_ind = 10,
 #' @noRd
 .kernel <- function(duration, kernel, alpha, rho, nu, P) {
   X <- seq(1, duration, by = 1)
-  kernel = match.arg(kernel,c("squared_exp","matern","rational_quad","periodic"))
+  kernel = match.arg(kernel,c("squared_exp","matern12","matern32","matern52","rational_quad","periodic"))
   if (kernel == "squared_exp") {
     K <- rkriging::Gaussian.Kernel(rho)
     cov_mat <- alpha^2 * rkriging::Evaluate.Kernel(K, X)
