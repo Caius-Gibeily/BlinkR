@@ -4,7 +4,7 @@
 \alias{gp_fit}
 \title{Simulate inhomogeneous renewal processes}
 \usage{
-gp_fit(traces, ...)
+gp_fit(events, ...)
 }
 \arguments{
 \item{sigma}{Numeric. Individual-level coefficient standard deviation.}

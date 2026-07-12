@@ -9,18 +9,35 @@
 #' @return A tibble containing simulated event times for each group.
 #' @export
 
-gp_fit <- function(traces, ...) {
+gp_fit <- function(events, ...) {
   UseMethod("gp_fit")
 }
 
 #' @export
-#' @method gp_fit tbl
-gp_fit.tbl <- function(traces, group_id = "group", ind_id = "ind_id",
+#' @method gp_fit data.frame
+gp_fit.data.frame <- function(events,...) {
+  event_data <- list(events = events)
+  gp_fit(event_data,...)
+}
+
+#' @export
+#' @method gp_fit list
+gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind_id",
                        event_times = "event_times", dt = "dt",
 
                        M = 40, family = c("exponential","gamma","weibull","log-normal","gengamma"),
                        kernel = c("squared_exp", "matern12","matern32","matern52","periodic"),
-                   priors = NULL, L_factor = 1.2) {
+                       priors = NULL, L_factor = 1.2, w0 = 0.5,
+                       chains = 4, iter = 2000, warmup = 1000, adapt_delta = 0.95, max_treedepth = 12,...) {
+  kernel <- match.arg(kernel)
+  family <- match.arg(family)
+
+  if (kernel == "periodic") {
+    warning("Periodic kernel uses half the number of basis functions (M). Doubling M")
+    M = M * 2
+  }
+
+  events <- event_data$events
 
   ind_str <- tryCatch(rlang::as_name(rlang::ensym(ind_id)),
                       error = function(e) NULL)
@@ -33,239 +50,180 @@ gp_fit.tbl <- function(traces, group_id = "group", ind_id = "ind_id",
   dt_str <- tryCatch(rlang::as_name(rlang::ensym(dt)),
                     error = function(e) NULL)
 
-  if (is.null(ind_str) || !ind_str %in% names(traces)) {
-    warning("Individual ID not provided or not found in 'traces'. Defaulting to 'one_ind' model")
+  if (missing(duration)) {
+    duration <- events %>% reframe(max_t = max(.data[[event_times_str]])) %>% pull(max_t)
+    warning("Setting duration to the latest event time. If this is incorrect, please set duration.")
+  }
+  if (is.null(ind_str) || !ind_str %in% names(events)) {
+    warning("Individual ID not provided or not found in 'event_data'. Defaulting to 'one_ind' model")
     subclass <- "one_ind"
-    ind_id <- rep(1, nrow(traces))
-    g_id <- rep(1, nrow(traces))
     I <- 1
+    ind_id <- rep(1, nrow(events))
+    g_id <- rep(1, nrow(events))
+    g_membership <- 1
   } else {
-    I <- traces %>%
+    I <- events %>%
       dplyr::distinct(.data[[ind_str]]) %>%
       dplyr::pull() %>%
       length()
 
     if (I == 1) {
       subclass <- "one_ind"
-      ind_id <- rep(1, nrow(traces))
-      g_id <- rep(1, nrow(traces))
+      ind_id <- rep(1, nrow(events))
+      g_id <- rep(1, nrow(events))
+      g_membership <- 1
     } else {
-      ind_id <- traces %>% dplyr::select(.data[[ind_str]]) %>%
+      ind_id <- events %>% dplyr::select(.data[[ind_str]]) %>%
         dplyr::pull()
-      if (is.null(group_str) || !group_str %in% names(traces)) {
-        warning("Group ID not provided or not found in 'traces'. Defaulting model to 'one_group'.")
+      if (is.null(group_str) || !group_str %in% names(events)) {
+        warning("Group ID not provided or not found in 'events'. Defaulting to 'one_group' model.")
         subclass <- "one_group"
-        g_id <- rep(1, nrow(traces))
+        g_id <- rep(1, nrow(events))
+        g_membership <- rep(1, I)
 
       } else {
 
-        G <- traces %>%
+        G <- events %>%
           dplyr::distinct(.data[[group_str]]) %>%
           dplyr::pull() %>%
           length()
-        g_id <- traces %>% dplyr::select(.data[[group_str]]) %>%
+        g_id <- events %>% dplyr::select(.data[[group_str]]) %>%
           dplyr::pull()
 
         if (G == 1) {
           subclass <- "one_group"
-
+          g_membership <- rep(1, I)
         } else {
           subclass <- "multi_group"
+          g_membership <- events %>%
+            distinct(.data[[group_str]],.data[[ind_str]]) %>%
+            pull(group)
+
         }
       }
     }
   }
 
-  if (is.null(event_times_str) || !event_times_str %in% names(traces)) {
-    stop("Please make sure that event times are present and that your column ID is the same.")
+  if (is.null(event_times_str) || !event_times_str %in% names(events)) {
+    stop("Please make sure that event times are present and that the column ID you specified has the same name.")
   }
 
-  if (is.null(dt_str) || !dt_str %in% names(traces)) {
-    traces <- traces %>%
+  if (is.null(dt_str) || !dt_str %in% names(events)) {
+    events <- events %>%
       mutate(dt = c(0,diff(.data[[event_times_str]])))
   }
-  g_membership <- traces %>%
-    distinct(.data[[group_str]],.data[[ind_str]])
 
-  model_setup <- list(
-    event_times = traces %>%
-      pull(.data[[event_times_str]]),
-
-    dt = traces %>% pull(.data[[dt_str]]),
-    ind_id = ind_id,
-    g_id = g_id,
-    g_membership = g_membership %>% pull(group),
+  model_data <- list(
+    event_times = events %>%
+      pull(all_of(event_times_str)),
+    traces = event_data$traces, # for simulations
+    dt = events %>% pull(all_of(dt_str)),
+    ind_id = as.numeric(as.character(ind_id)),
+    g_id = as.numeric(as.character(g_id)),
+    g_membership = g_membership ,
     I = I,
-    settings = list(M = M,
+    settings = list(duration = duration,
+                    M = M,
                     L_factor = L_factor,
+                    w0 = w0,
                     kernel = match.arg(kernel),
                     family = match.arg(family),
-                    priors = priors)
+                    priors = priors),
+    stan_runtime = list(chains = chains,
+                        iter = iter, warmup = warmup,
+                        adapt_delta = adapt_delta,
+                        max_treedepth = max_treedepth)
   )
 
-  class(model_setup) <- c(subclass, "gp_fit_model")
-  gp_fit(model_setup)
+  class(model_data) <- c(subclass, "gp_model")
+  gp_fit(model_data)
 
 }
 
 #' @export
-#' @method gp_fit one_ind
-gp_fit.one_ind <- function(model_setup, ...) {
-  message("Fitting a single-individual Stan model")
-  prior_frame <- parse_priors.one_ind(model_setup)
+#' @method gp_fit gp_model
+gp_fit.gp_model <- function(model_data, ...) {
 
+  if ("one_ind" %in% class(model_data)) {
+    message("Fitting a single-individual Stan model")
+    prior_frame <- parse_priors.one_ind(model_data)
+    file <- "inst/stan/hsgp_one_ind.stan"
+  } else if ("one_group" %in% class(model_data)) {
+    message("Fitting a single-group hierarchical Stan model")
+    prior_frame <- parse_priors.one_group(model_data)
+    file <- "inst/stan/hsgp_one_group.stan"
+  } else if ("multi_group" %in% class(model_data)) {
+    message("Fitting a multi-group hierarchical Stan model")
+    prior_frame <- parse_priors.multi_group(model_data)
+    file <- "inst/stan/hsgp_multi_group.stan"
+  }
 
-  model_setup$settings <- append(model_setup$settings,
-                                 list(variables=prior_frame %>% pull(prior_variable)))
-  flags <- .get_flags(model_setup)
-  print(flags)
-
-  stan_dat <- list(
-    N_total = length(model_setup$event_times),
-    M = model_setup$settings$M,
-    L_factor = model_setup$settings$L_factor,
-    t_ev = model_setup$event_times,
-    dt = model_setup$dt,
-
-    distributions = as.double(prior_frame$distribution_id),
-    N_params = nrow(prior_frame),
-    params = as.matrix(prior_frame[c("param_1","param_2")]),
-    kernel = match(model_setup$settings$kernel,c("squared_exp",
-                                        "matern12","matern32","matern52","periodic")),
-    family = match(model_setup$settings$family, c("exponential","gamma","weibull",
-                                                    "log-normal","gengamma"))
-  )
-  stan_dat <- append(stan_dat, flags)
-
-  options(mc.cores = parallel::detectCores())
-  rstan_options(auto_write = TRUE)
-  fit <- stan(
-    file = "inst/stan/hsgp_one_ind.stan",
-    data = stan_dat,
-    chains = 4,
-    iter = 2000,
-    warmup = 1000,
-    control = list(adapt_delta = 0.95, max_treedepth = 12)
-
-  )
-  return(fit)
-
-}
-
-#' @export
-#' @method gp_fit one_group
-gp_fit.one_group <- function(model_setup,flags, ...) {
-  message("Fitting a single-group hierarchical Stan model")
-  prior_frame <- parse_priors.one_group(model_setup)
-
-  model_setup$settings <- append(model_setup$settings,
+  model_data$settings <- append(model_data$settings,
                                  list(variables=prior_frame %>%
                                         pull(prior_variable)))
-  flags <- .get_flags(model_setup)
-  print(flags)
+  flags <- .get_flags(model_data)
 
   stan_dat <- list(
-    N_total = length(model_setup$event_times),
-    I = model_setup$I,
-    ind_id = model_setup$ind_id,
-    M = model_setup$settings$M,
-    L_factor = model_setup$settings$L_factor,
-    t_ev = model_setup$event_times,
-    dt = model_setup$dt,
+    N_total = length(model_data$event_times),
+    I = model_data$I,
+    ind_id = model_data$ind_id,
+    G = model_data$G,
+    g_id = model_data$g_id,
+    g_membership = model_data$g_membership,
+    I_per_group = tabulate(model_data$g_membership),
+
+    M = model_data$settings$M,
+    L_factor = model_data$settings$L_factor,
+    w0 = model_data$settings$w0,
+    t_ev = model_data$event_times,
+    dt = model_data$dt,
 
     distributions = as.double(prior_frame$distribution_id),
     N_params = nrow(prior_frame),
     params = as.matrix(prior_frame[c("param_1","param_2")]),
-    kernel = match(model_setup$settings$kernel,c("squared_exp",
-                                                 "matern12","matern32","matern52","periodic")),
-    family = match(model_setup$settings$family, c("exponential","gamma","weibull",
-                                                  "log-normal","gengamma"))
+    kernel = match(model_data$settings$kernel,c("squared_exp",
+                                                "matern12","matern32","matern52","periodic")),
+    family = match(model_data$settings$family, c("exponential","gamma","weibull",
+                                                 "log-normal","gengamma"))
   )
   stan_dat <- append(stan_dat, flags)
 
   options(mc.cores = parallel::detectCores())
   rstan_options(auto_write = TRUE)
-  fit <- stan(
-    file = "inst/stan/hsgp_one_group.stan",
+
+  fit <- rstan::stan(
+    file = file,
     data = stan_dat,
-    chains = 4,
-    iter = 2000,
-    warmup = 1000,
-    control = list(adapt_delta = 0.95, max_treedepth = 12)
+    chains = model_data$stan_runtime$chains,
+    iter = model_data$stan_runtime$iter,
+    warmup = model_data$stan_runtime$warmup,
+    control = list(adapt_delta = model_data$stan_runtime$adapt_delta,
+                   max_treedepth = model_data$stan_runtime$max_treedepth))
 
-  )
-  return(fit)
+  model_data$fit <- fit
+  return(model_data)
 }
-
-#' @export
-#' @method gp_fit multi_group
-gp_fit.multi_group <- function(model_setup,...) {
-  message("Fitting a multi-group hierarchical Stan model")
-  prior_frame <- parse_priors.multi_group(model_setup)
-
-  model_setup$settings <- append(model_setup$settings,
-                                 list(variables=prior_frame %>%
-                                        pull(prior_variable)))
-  flags <- .get_flags(model_setup)
-
-  stan_dat <- list(
-    N_total = length(model_setup$event_times),
-    I = model_setup$I,
-    ind_id = model_setup$ind_id,
-    G = model_setup$G,
-    g_id = model_setup$g_id,
-    g_membership = model_setup$g_membership,
-    I_per_group = tabulate(model_setup$g_membership),
-    M = model_setup$settings$M,
-    L_factor = model_setup$settings$L_factor,
-    t_ev = model_setup$event_times,
-    dt = model_setup$dt,
-
-    distributions = as.double(prior_frame$distribution_id),
-    N_params = nrow(prior_frame),
-    params = as.matrix(prior_frame[c("param_1","param_2")]),
-    kernel = match(model_setup$settings$kernel,c("squared_exp",
-                                                 "matern12","matern32","matern52","periodic")),
-    family = match(model_setup$settings$family, c("exponential","gamma","weibull",
-                                                  "log-normal","gengamma"))
-  )
-  stan_dat <- append(stan_dat, flags)
-
-  options(mc.cores = parallel::detectCores())
-  rstan_options(auto_write = TRUE)
-  fit <- stan(
-    file = "inst/stan/hsgp_multi_group.stan",
-    data = stan_dat,
-    chains = 4,
-    iter = 2000,
-    warmup = 1000,
-    control = list(adapt_delta = 0.95, max_treedepth = 12)
-
-  )
-  return(fit)
-}
-
 
 #' @noRd
-.get_flags <- function(model_setup) {
+.get_flags <- function(model_data) {
   flags <- list()
-  if (model_setup$settings$family != "lognormal") {
+  if (model_data$settings$family != "lognormal") {
     flags[["include_mu_lognormal"]] = 0
     flags[["include_sigma_lognormal"]] = 0
   }
 
-  if (model_setup$settings$family == "exponential") {
+  if (model_data$settings$family == "exponential") {
     flags[["include_k"]] = 0
     flags[["include_shape"]] = 0
-  } else if (model_setup$settings$family == "gamma") {
-    flags[["include_k"]] = match("k",model_setup$settings$variables)
+  } else if (model_data$settings$family == "gamma") {
+    flags[["include_k"]] = match("k",model_data$settings$variables)
     flags[["include_shape"]] = 0
-  } else if (model_setup$settings$family == "weibull") {
+  } else if (model_data$settings$family == "weibull") {
     flags[["include_k"]] = 0
-    flags[["include_shape"]] = match("shape",model_setup$settings$variables)
-  } else if (model_setup$settings$family == "gengamma") {
-    flags[["include_k"]] = match("k",model_setup$settings$variables)
-    flags[["include_shape"]] = match("shape",model_setup$settings$variables)
+    flags[["include_shape"]] = match("shape",model_data$settings$variables)
+  } else if (model_data$settings$family == "gengamma") {
+    flags[["include_k"]] = match("k",model_data$settings$variables)
+    flags[["include_shape"]] = match("shape",model_data$settings$variables)
   }
 
   return(flags)

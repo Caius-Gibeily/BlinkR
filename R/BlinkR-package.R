@@ -15,6 +15,9 @@
 #' @import tibble
 #' @import flexsurv
 #' @import rstan
+#' @import rTensor
+#' @import patchwork
+#' @importFrom RColorBrewer brewer.pal
 #' @importFrom MASS mvrnorm
 #' @importFrom rstantools rstan_config
 #' @importFrom RcppParallel RcppParallelLibs

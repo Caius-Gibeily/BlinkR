@@ -16,10 +16,11 @@
 #'
 #' @return A tibble containing simulated event times for each group.
 #' @export
-simulate_events <- function(traces, group = group, ind = row_id, family = c("exponential","gamma","weibull",
+simulate_events <- function(trace_data, group = group, ind = row_id, family = c("exponential","gamma","weibull",
                                                  "log-normal","gengamma"),
                             scale = NULL, mu = NULL, shape = 1, k = 2, sigma = 1,
                             Q = 0, baseline = 0, baseline_sd = 0, lerp = 10) {
+  if (is.list(trace_data)) traces <- trace_data$traces
   sim_struct <- traces |>
     group_by({{group}},{{ind}}) |> group_keys()
 
@@ -43,7 +44,7 @@ simulate_events <- function(traces, group = group, ind = row_id, family = c("exp
       group_split(row_id) |>
       map(\(.x) .simulate_renewal(.x, modulant = scale,
                                   shape = shape, k = k, lerp = lerp)) |>
-      list_rbind(names_to = "row_id") |>
+      list_rbind(names_to = "row_id") |> mutate(row_id = as.factor(row_id)) |>
       left_join(sim_struct, by = "row_id")|> relocate(group,.after=row_id)
 
 
@@ -57,11 +58,20 @@ simulate_events <- function(traces, group = group, ind = row_id, family = c("exp
       group_split(row_id) |>
       map(\(.x) .simulate_renewal(.x, modulant = mu,
                                   sigma = sigma, Q = 0, lerp = lerp)) |>
-      list_rbind(names_to = "row_id") |>
+      list_rbind(names_to = "row_id") |> mutate(row_id = as.factor(row_id)) |>
       left_join(sim_struct, by = "row_id") |> relocate(group,.after=row_id)
   } else stop("Please choose a survival function from ",
               "exponential, gamma, weibull, log-normal, gengamma")
-  return(event_times)
+  if (is.list(trace_data)) {
+    sim_data <- trace_data %>% append(
+      list(events = event_times))
+    class(sim_data) <- c("sim_traces",class(sim_data))
+  } else {
+    sim_data <- list(traces = trace_data,
+                     events = event_times)
+  }
+  class(sim_data) <- c("sim_events",class(sim_data))
+  return(sim_data)
 
 }
 

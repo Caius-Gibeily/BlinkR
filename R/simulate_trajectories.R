@@ -13,7 +13,7 @@
 simulate_spline_trajectories <- function(duration = 100, n_ind = 10, n_groups = 1,
                                          df = 5, sd_group = 0.5, sd_ind = 0.25,
                                          mu_coeffs = stats::rnorm(df, 0, 1)) {
-  sim_struct <- tibble::rowid_to_column(tidyr::expand_grid(group = 1:n_groups, ind = 1:n_ind), var = "row_id")
+  sim_struct <- .create_sim_struct(n_groups = n_groups, n_ind = n_ind)
 
   if (n_ind == 1 || n_groups == 1) mu_coeffs <- 0
 
@@ -48,7 +48,15 @@ simulate_spline_trajectories <- function(duration = 100, n_ind = 10, n_groups = 
 simulate_boxcar_trajectories <- function(duration = 100, n_ind = 10, n_groups = 1,
                                          nodes = seq(1, duration, length.out = 3), steps = c(-1, 1),
                                          cycles = 2, sd_group = 0.5, sd_ind = 0.25) {
-  sim_struct <- tibble::rowid_to_column(tidyr::expand_grid(group = 1:n_groups, ind = 1:n_ind), var = "row_id")
+  if (n_ind == 1) {
+    alpha_global <- alpha_group <- 0
+    type <- "one_ind"
+  } else if (n_groups == 1) {
+    alpha_global <- 0
+    type <- "one_group"
+  } else type <- "multi_group"
+
+  sim_struct <- .create_sim_struct(n_groups = n_groups, n_ind = n_ind)
 
   scale_factors_group <- stats::rnorm(n_groups, 1, sd_group)
   if (n_groups == 1 || n_ind == 1) scale_factors_group <- 1
@@ -57,7 +65,7 @@ simulate_boxcar_trajectories <- function(duration = 100, n_ind = 10, n_groups = 
 
   group_traces <- .simulate_n(duration, n = n_groups, class = "boxcar",
                               nodes = nodes, steps = steps, cycles = cycles,
-                              scale_factor = scale_factors_group)
+                              scale_factor = scale_factors_group, level = "group")
 
   ind_traces <- .simulate_n(duration, n = n_ind * n_groups, class = "boxcar",
                             nodes = nodes, steps = steps,
@@ -67,7 +75,20 @@ simulate_boxcar_trajectories <- function(duration = 100, n_ind = 10, n_groups = 
     dplyr::left_join(sim_struct, by = "row_id") |>
     dplyr::relocate(group, ind)
 
-  return(ind_traces)
+  args_list <- mget(names(formals()), sys.frame(sys.nframe()))
+
+  exclude <- c("ind_traces","group_traces","scale_factors_ind","scale_factors_group","type")
+  args_list <- args_list[!names(args_list) %in% exclude]
+
+  sim_traces <- list(traces = ind_traces$traces,
+                     steps = ind_traces$level_steps,
+                     group_traces = group_traces$traces,
+                     group_steps = group_traces$level_steps,
+                     type = type)
+  sim_traces$sim_parameters <- args_list
+
+  class(sim_traces) <- c("sim_traces",class(sim_traces))
+  return(sim_traces)
 }
 
 
@@ -90,13 +111,14 @@ simulate_gp_trajectories <- function(duration = 100, n_groups = 1, n_ind = 10,
                                      alpha_group = 0.5, rho_group = duration / 2,
                                      alpha_ind = 0.25, rho_ind = duration / 2,
                                      nu = 3/2, P = 1) {
-  sim_struct <- tibble::rowid_to_column(tidyr::expand_grid(group = 1:n_groups, ind = 1:n_ind), var = "row_id")
-
+  sim_struct <- .create_sim_struct(n_groups = n_groups, n_ind = n_ind)
   if (n_ind == 1) {
     alpha_global <- alpha_group <- 0
+    type <- "one_ind"
   } else if (n_groups == 1) {
     alpha_global <- 0
-  }
+    type <- "one_group"
+  } else type <- "multi_group"
 
   global_trace <- .simulate_n(duration, n = 1, class = "gp",
                               kernel = kernel, alpha = alpha_global,
@@ -115,13 +137,28 @@ simulate_gp_trajectories <- function(duration = 100, n_groups = 1, n_ind = 10,
     dplyr::mutate(y = y_ind + y_group) |>
     dplyr::relocate(group, ind, .after = "row_id")
 
-  return(ind_traces)
+  args_list <- as.list(environment())
+  exclude <- c("ind_traces","group_traces","global_trace","type")
+  args_list <- args_list[!names(args_list) %in% exclude]
+
+  sim_traces <- list(traces = ind_traces,
+                     group_traces = group_traces,
+                     global_trace = global_trace,
+                     type=type)
+  sim_traces$sim_parameters <- args_list
+  class(sim_traces) <- append("sim_traces",class(sim_traces))
+  return(sim_traces)
 }
 
 # ==============================================================================
 # Helpers
 # ==============================================================================
-
+.create_sim_struct <- function(n_groups, n_ind) {
+  tibble::rowid_to_column(
+    tidyr::expand_grid(group = as.factor(seq_len(n_groups)), ind = as.factor(seq_len(n_ind))),
+    var = "row_id"
+  ) |> mutate(row_id = as.factor(row_id))
+}
 #' @noRd
 .simulate_n <- function(duration, n, class, df = 5, mu_coeffs = 0, sd_coeffs = 0.5,
                         level = "row_id", nodes, steps, cycles, scale_factor = 1, ...) {
@@ -137,20 +174,23 @@ simulate_gp_trajectories <- function(duration = 100, n_groups = 1, n_ind = 10,
 
     coeffs <- matrix(stats::rnorm(n * df, mu_coeffs, sd_coeffs), nrow = df, ncol = n)
     traces <- purrr::map(1:n, \(i) .sim_splines(duration, df, coeffs[, i, drop = FALSE], ...)) |>
-      purrr::list_rbind(names_to = level)
+      purrr::list_rbind(names_to = level) |>
+      dplyr::mutate(across(all_of(level), as.factor))
 
     return(list(traces = traces, coeffs = coeffs))
 
   } else if (class == "boxcar") {
     level_steps <- as.matrix(steps) %*% t(scale_factor)
     traces <- purrr::map(1:n, \(i) .sim_boxcar(duration, nodes, level_steps[, i], cycles)) |>
-      purrr::list_rbind(names_to = level)
+      purrr::list_rbind(names_to = level) |>
+      dplyr::mutate(across(all_of(level), as.factor))
 
     return(list(traces = traces, scales = level_steps))
 
   } else if (class == "gp") {
     traces <- purrr::map(1:n, \(i) .sim_GP(duration, ...)) |>
-      purrr::list_rbind(names_to = level)
+      purrr::list_rbind(names_to = level) |>
+      dplyr::mutate(across(all_of(level), as.factor))
 
     return(traces)
   }
@@ -186,12 +226,21 @@ simulate_gp_trajectories <- function(duration = 100, n_groups = 1, n_ind = 10,
 #' @noRd
 .kernel <- function(duration, kernel, alpha, rho, nu, P) {
   X <- seq(1, duration, by = 1)
-  kernel = match.arg(kernel,c("squared_exp","matern12","matern32","matern52","rational_quad","periodic"))
+  kernel = match.arg(kernel,c("squared_exp","matern", "matern12","matern32","matern52","rational_quad","periodic"))
   if (kernel == "squared_exp") {
     K <- rkriging::Gaussian.Kernel(rho)
     cov_mat <- alpha^2 * rkriging::Evaluate.Kernel(K, X)
   } else if (kernel == "matern") {
     K <- rkriging::Matern.Kernel(rho, nu = nu)
+    cov_mat <- alpha^2 * rkriging::Evaluate.Kernel(K, X)
+  } else if (kernel == "matern12") {
+    K <- rkriging::Matern12.Kernel(rho)
+    cov_mat <- alpha^2 * rkriging::Evaluate.Kernel(K, X)
+  } else if (kernel == "matern32") {
+    K <- rkriging::Matern32.Kernel(rho)
+    cov_mat <- alpha^2 * rkriging::Evaluate.Kernel(K, X)
+  } else if (kernel == "matern52") {
+    K <- rkriging::Matern52.Kernel(rho)
     cov_mat <- alpha^2 * rkriging::Evaluate.Kernel(K, X)
   } else if (kernel == "rational_quad") {
     K <- rkriging::RQ.Kernel(rho, alpha = 1)
