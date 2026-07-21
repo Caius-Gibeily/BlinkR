@@ -23,7 +23,12 @@ Imports:
     purrr,
     rkriging,
     tibble,
-    tidyr
+    tidyr,
+    ggplot2,
+    ggdist,
+    RColorBrewer,
+    patchwork,
+    rTensor
 LinkingTo:
     BH (>= 1.66.0),
     Rcpp (>= 0.12.0),
@@ -31,6 +36,7 @@ LinkingTo:
     RcppParallel (>= 5.0.1),
     rstan (>= 2.18.1),
     StanHeaders (>= 2.18.0)
-SystemRequirements: GNU make, C++17
+SystemRequirements: GNU make
 URL: https://github.com/Caius-Gibeily/BlinkR
 BugReports: https://github.com/Caius-Gibeily/BlinkR/issues
+Biarch: true

@@ -7,13 +7,13 @@
 # prior predictive checks: copies of each stan script but only with generated quantities
 # option to select sample trajectories, event rasters/heatmaps, event rates and interevent distributions
 #' @export
-reconstruct_traces <- function(model,resolution=0.01,probs=c(0.025, 0.50, 0.975),...) {
+reconstruct_traces <- function(model,resolution=0.01,.width=c(0.5,0.8,0.95),...) {
   UseMethod("reconstruct_traces")
 }
 
 #' @export
 #' @method reconstruct_traces one_ind
-reconstruct_traces.one_ind <- function(model) {
+reconstruct_traces.one_ind <- function(model,.width,...) {
 
   M <- model$settings$M
   L <- model$settings$L_factor * model$settings$duration
@@ -28,25 +28,26 @@ reconstruct_traces.one_ind <- function(model) {
 
   I <- model$I
   G <- 1
+  g_membership <- 1
 
   beta <- post_data$beta
 
   mu <- post_data$mu
 
-  f <- phi_basis %*% t(beta) |> sweep(MARGIN = c(1,3),
+  f <- phi_basis %*% t(beta) |> sweep(MARGIN = 2,
                                        STATS = mu, FUN = "+")
 
 
-  gp_dat <- f@data
-
-  tidy_quants <- .tidy_quantiles(gp_dat,t_grid,I,g_membership,probs)
+  gp_dat <- f
+  print(dim(f))
+  tidy_quants <- .tidy_quantiles(t(gp_dat),t_grid,I,g_membership,n_grid,.width,...)
   class(tidy_quants) <- c("one_group","gp_model",class(tidy_quants))
   return(tidy_quants)
 }
 
 #' @export
 #' @method reconstruct_traces one_group
-reconstruct_traces.one_group <- function(model,.width = c(0.5, 0.8, 0.95),...) {
+reconstruct_traces.one_group <- function(model,.width,level="ind",...) {
 
   M <- model$settings$M
   L <- model$settings$L_factor * model$settings$duration
@@ -73,17 +74,21 @@ reconstruct_traces.one_group <- function(model,.width = c(0.5, 0.8, 0.95),...) {
   f_group_ind <- f_ind |> sweep(MARGIN = c(1,3),
                                  STATS = t(f_group), FUN = "+")
 
-  gp_dat <- f_group_ind@data
+  if (level == "ind") {
+    gp_dat <- f_group_ind@data
+    tidy_quants <- .tidy_quantiles(gp_dat,t_grid,I,g_membership,n_grid,level=level,.width = .width)
+  } else if (level == "group") {
+    gp_dat <- f_group
+    tidy_quants <- .tidy_quantiles(gp_dat,t_grid,G,g_membership,n_grid,level = level,.width = .width)
+  }
 
-  tidy_quants <- .tidy_quantiles(f_group_ind@data,t_grid,I,g_membership,n_grid,
-                                 .width = .width)
   class(tidy_quants) <- c("one_group","gp_model",class(tidy_quants))
   return(tidy_quants)
 }
 
 #' @export
 #' @method reconstruct_traces multi_group
-reconstruct_traces.multi_group <- function(model,...) {
+reconstruct_traces.multi_group <- function(model,.width,level="ind",...) {
 
   M <- model$settings$M
   L <- model$settings$L_factor * model$settings$duration
@@ -115,11 +120,22 @@ reconstruct_traces.multi_group <- function(model,...) {
                                               STATS = mu_ind, FUN = "+")
   f_group_ind <- (f_group[,g_membership,] + f_ind) |> sweep(MARGIN = c(1,3),
                                                            STATS = t(f_global), FUN = "+")
+  if (level == "ind") {
+    gp_dat <- f_group_ind@data
+    tidy_quants <- .tidy_quantiles(gp_dat,t_grid,I,g_membership,n_grid,level=level,.width = .width)
+  } else if (level == "group") {
+    f_group <- f_group |> sweep(MARGIN = c(1,3),
+                                STATS = t(f_global), FUN = "+")
+    gp_dat <- f_group@data
+    tidy_quants <- .tidy_quantiles(gp_dat,t_grid,G,g_membership,n_grid,level=level,.width = .width)
+  } else if (level == "global") {
+    gp_dat <- f_global
+    tidy_quants <- .tidy_quantiles(t(gp_dat),t_grid,1,g_membership,n_grid,level=level,.width = .width)
+  }
 
-  gp_dat <- f_group_ind@data
 
 
-  tidy_quants <- .tidy_quantiles(gp_dat,t_grid,I,g_membership,n_grid)
+
   class(tidy_quants) <- c("one_group","gp_model",class(tidy_quants))
   return(tidy_quants)
 }
@@ -139,37 +155,93 @@ reconstruct_traces.multi_group <- function(model,...) {
 
 
 #' @noRd
-.tidy_quantiles <- function(f_data, t_grid, I, g_membership, n_grid, .width = c(0.5, 0.8, 0.95)) {
+.tidy_quantiles <- function(f_data, t_grid, N, g_membership, n_grid, .width = c(0.5, 0.8, 0.95),level="ind") {
   probs <- sort(unique(c(0.5, (1 - .width) / 2, 1 - (1 - .width) / 2)))
 
   dims <- dim(f_data)
+  print(dims)
+  if (N == 1) gp_flattened <- gp_flattened <- matrix(f_data, nrow = dims[1], ncol = dims[2])
+  else gp_flattened <- matrix(f_data, nrow = dims[1], ncol = dims[2] * dims[3])
 
-  gp_flattened <- matrix(f_data, nrow = dims[1], ncol = dims[2] * dims[3])
-  quants <- matrixStats::colQuantiles(gp_flattened, probs = probs)
+  if (level == "ind") {
+    print(dim(gp_flattened))
+    quants <- matrixStats::colQuantiles(gp_flattened, probs = probs)
 
-  base_df <- tibble(
-    ind   = as.factor(rep(1:I, times = n_grid)),
-    group = as.factor(g_membership[ind]),
-    x     = rep(t_grid, each = I)
-  )
+    base_df <- tibble(
+      ind = as.factor(rep(1:N, times = n_grid)),
+      group = as.factor(g_membership[ind]),
+      x = rep(t_grid, each = N)
+    )
 
-  quantile_df <- bind_cols(base_df, as_tibble(quants))
+    quantile_df <- bind_cols(base_df, as_tibble(quants))
 
-  median_col <- paste0("50%")
-  medians_df <- quantile_df %>%
-    select(ind, group, x, y = !!sym(median_col))
+    median_col <- paste0("50%")
+    medians_df <- quantile_df %>%
+      select(ind, group, x, y = !!sym(median_col))
 
-  long_df <- lapply(.width, function(w) {
-    lower_prob <- paste0(round((1 - w) / 2 * 100, 1), "%")
-    upper_prob <- paste0(round((1 - (1 - w) / 2) * 100, 1), "%")
+    long_df <- lapply(.width, function(w) {
+      lower_prob <- paste0(round((1 - w) / 2 * 100, 1), "%")
+      upper_prob <- paste0(round((1 - (1 - w) / 2) * 100, 1), "%")
 
-    quantile_df %>%
-      select(ind, group, x, ymin = !!sym(lower_prob), ymax = !!sym(upper_prob)) %>%
-      mutate(.width = w)
-  }) %>%
-    bind_rows()
+      quantile_df %>%
+        select(ind, group, x, ymin = !!sym(lower_prob), ymax = !!sym(upper_prob)) %>%
+        mutate(.width = w)
+    }) %>%
+      bind_rows()
 
-  left_join(long_df, medians_df, by = c("ind", "group", "x"))
+    left_join(long_df, medians_df, by = c("ind", "group", "x"))
+  } else if (level == "group") {
+    quants <- matrixStats::colQuantiles(gp_flattened, probs = probs)
+
+    base_df <- tibble(
+      group = rep(1:N, times = length(t_grid)),
+      x = rep(t_grid, each = N),
+    )
+
+    quantile_df <- bind_cols(base_df, as_tibble(quants))
+
+    median_col <- paste0("50%")
+    medians_df <- quantile_df %>%
+      select(group, x, y = !!sym(median_col))
+
+    long_df <- lapply(.width, function(w) {
+      lower_prob <- paste0(round((1 - w) / 2 * 100, 1), "%")
+      upper_prob <- paste0(round((1 - (1 - w) / 2) * 100, 1), "%")
+
+      quantile_df %>%
+        select(group, x, ymin = !!sym(lower_prob), ymax = !!sym(upper_prob)) %>%
+        mutate(.width = w)
+    }) %>%
+      bind_rows()
+
+    left_join(long_df, medians_df, by = c("group", "x"))
+
+  } else if (level == "global") {
+    quants <- matrixStats::colQuantiles(gp_flattened, probs = probs)
+
+    base_df <- tibble(
+      global = rep(1,length(t_grid)),
+      x = t_grid
+    )
+    print(dim(quants))
+    quantile_df <- bind_cols(base_df, as_tibble(quants))
+
+    median_col <- paste0("50%")
+    medians_df <- quantile_df %>%
+      select(global, x, y = !!sym(median_col))
+
+    long_df <- lapply(.width, function(w) {
+      lower_prob <- paste0(round((1 - w) / 2 * 100, 1), "%")
+      upper_prob <- paste0(round((1 - (1 - w) / 2) * 100, 1), "%")
+
+      quantile_df %>%
+        select(global, x, ymin = !!sym(lower_prob), ymax = !!sym(upper_prob)) %>%
+        mutate(.width = w)
+    }) %>%
+      bind_rows()
+
+    left_join(long_df, medians_df, by = c("global", "x"))
+  }
 }
 
 #' @noRd

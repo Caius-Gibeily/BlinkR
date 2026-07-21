@@ -76,7 +76,7 @@ simulate_events <- function(trace_data, group = group, ind = row_id, family = c(
 }
 
 #' @noRd
-.simulate_renewal <- function(trace,modulant,shape,k,sigma,Q,lerp = 10) {
+.simulate_renewal <- function(trace,modulant,shape,k,sigma,Q,lerp = 20) {
 
 
   trace_parts <- trace |>

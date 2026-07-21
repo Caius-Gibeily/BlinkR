@@ -14,21 +14,42 @@ simulate_spline_trajectories <- function(duration = 100, n_ind = 10, n_groups = 
                                          df = 5, sd_group = 0.5, sd_ind = 0.25,
                                          mu_coeffs = stats::rnorm(df, 0, 1)) {
   sim_struct <- .create_sim_struct(n_groups = n_groups, n_ind = n_ind)
+  if (n_ind == 1) {
+    alpha_global <- alpha_group <- 0
+    type <- "one_ind"
+  } else if (n_groups == 1) {
+    alpha_global <- 0
+    type <- "one_group"
+  } else type <- "multi_group"
 
   if (n_ind == 1 || n_groups == 1) mu_coeffs <- 0
 
   group_traces <- .simulate_n(duration, n = n_groups, class = "spline",
-                              df = df, mu_coeffs = mu_coeffs, sd_coeffs = sd_group)
+                              df = df, mu_coeffs = mu_coeffs, sd_coeffs = sd_group, level = "group")
 
   ind_traces <- .simulate_n(duration, n = n_ind * n_groups, class = "spline",
                             df = df, mu_coeffs = group_traces$coeffs[, sim_struct$group, drop = FALSE],
-                            sd_coeffs = sd_ind)
+                            sd_coeffs = sd_ind, g_membership = sim_struct |> pull(group))
 
   ind_traces$traces <- ind_traces$traces |>
     dplyr::left_join(sim_struct, by = "row_id") |>
     dplyr::relocate(group, ind)
 
-  return(ind_traces)
+  args_list <- mget(names(formals()), sys.frame(sys.nframe()))
+
+  exclude <- c("ind_traces","group_traces","type","mu_coeffs")
+  args_list <- args_list[!names(args_list) %in% exclude]
+
+  sim_traces <- list(traces = ind_traces$traces,
+                     group_traces = group_traces$traces,
+                     global_coeffs = mu_coeffs,
+                     group_coeffs = group_traces$coeffs,
+                     ind_coeffs = ind_traces$coeffs,
+                     type = type)
+  sim_traces$sim_parameters <- args_list
+
+  class(sim_traces) <- c("sim_traces",class(sim_traces))
+  return(sim_traces)
 }
 
 
@@ -126,14 +147,22 @@ simulate_gp_trajectories <- function(duration = 100, n_groups = 1, n_ind = 10,
 
   group_traces <- .simulate_n(duration, n = n_groups, class = "gp",
                               kernel = kernel, alpha = alpha_group,
-                              rho = rho_group, nu = nu, P = P, level = "group") |>
-    dplyr::mutate(y = y + global_trace$y)
+                              rho = rho_group, nu = nu, P = P, level = "group")
+
+  if (type != "one_group") {
+    group_traces <- group_traces %>% dplyr::group_by(x) |> dplyr::mutate(y = y - mean(y)) |>
+    dplyr::ungroup() |> dplyr::mutate(y = y + global_trace$y)
+  } else {
+    group_traces <- group_traces |> dplyr::mutate(y = y + global_trace$y)
+  }
 
   ind_traces <- .simulate_n(duration, n = n_groups *n_ind, class = "gp",
                             kernel = kernel, alpha = alpha_ind,
                             rho = rho_ind, nu = nu, P = P) |>
     dplyr::left_join(sim_struct, by = "row_id") |>
     dplyr::left_join(group_traces, by = c("group", "x"), suffix = c("_ind", "_group")) |>
+    dplyr::group_by(x,group) |>
+    dplyr::mutate(y_ind = y_ind - mean(y_ind)) |> dplyr::ungroup() |>
     dplyr::mutate(y = y_ind + y_group) |>
     dplyr::relocate(group, ind, .after = "row_id")
 
@@ -161,7 +190,7 @@ simulate_gp_trajectories <- function(duration = 100, n_groups = 1, n_ind = 10,
 }
 #' @noRd
 .simulate_n <- function(duration, n, class, df = 5, mu_coeffs = 0, sd_coeffs = 0.5,
-                        level = "row_id", nodes, steps, cycles, scale_factor = 1, ...) {
+                        level = "row_id", nodes, steps, cycles, scale_factor = 1, g_membership = NULL, ...) {
   class = match.arg(class,c("spline","boxcar","gp"))
 
   if (class == "spline") {
@@ -172,7 +201,15 @@ simulate_gp_trajectories <- function(duration = 100, n_groups = 1, n_ind = 10,
       stop("Spline mean coefficients length must equal 1 or df.")
     }
 
-    coeffs <- matrix(stats::rnorm(n * df, mu_coeffs, sd_coeffs), nrow = df, ncol = n)
+    # normalise coefficients to scale to 0
+    coeffs <- matrix(stats::rnorm(n * df, 0, 1), nrow = df, ncol = n)
+    if (is.matrix(mu_coeffs)) {
+      for (g in unique(g_membership)) {
+        coeffs[,g_membership == g] <- mu_coeffs[,g_membership == g] + t(scale(t(coeffs[,g_membership == g]))) * sd_coeffs
+      }
+    }
+
+
     traces <- purrr::map(1:n, \(i) .sim_splines(duration, df, coeffs[, i, drop = FALSE], ...)) |>
       purrr::list_rbind(names_to = level) |>
       dplyr::mutate(across(all_of(level), as.factor))

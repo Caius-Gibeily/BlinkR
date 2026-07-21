@@ -25,7 +25,7 @@ gp_fit.data.frame <- function(events,...) {
 gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind_id",
                        event_times = "event_times", dt = "dt",
 
-                       M = 40, family = c("exponential","gamma","weibull","log-normal","gengamma"),
+                       M = 40, family = c("exponential","gamma","weibull","lognormal","gengamma"),
                        kernel = c("squared_exp", "matern12","matern32","matern52","periodic"),
                        priors = NULL, L_factor = 1.2, w0 = 0.5,
                        chains = 4, iter = 2000, warmup = 1000, adapt_delta = 0.95, max_treedepth = 12,...) {
@@ -117,11 +117,14 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind_
     event_times = events %>%
       pull(all_of(event_times_str)),
     traces = event_data$traces, # for simulations
+    group_traces = event_data$group_traces,
+    global_trace = event_data$global_trace,
     dt = events %>% pull(all_of(dt_str)),
     ind_id = as.numeric(as.character(ind_id)),
     g_id = as.numeric(as.character(g_id)),
-    g_membership = g_membership ,
+    g_membership = as.numeric(as.character(g_membership)),
     I = I,
+    G = G,
     settings = list(duration = duration,
                     M = M,
                     L_factor = L_factor,
@@ -135,6 +138,9 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind_
                         max_treedepth = max_treedepth)
   )
 
+  model_data$group_traces <- event_data$group_traces
+
+
   class(model_data) <- c(subclass, "gp_model")
   gp_fit(model_data)
 
@@ -147,15 +153,15 @@ gp_fit.gp_model <- function(model_data, ...) {
   if ("one_ind" %in% class(model_data)) {
     message("Fitting a single-individual Stan model")
     prior_frame <- parse_priors.one_ind(model_data)
-    file <- "inst/stan/hsgp_one_ind.stan"
+    stan_obj <- stanmodels$hsgp_one_ind
   } else if ("one_group" %in% class(model_data)) {
     message("Fitting a single-group hierarchical Stan model")
     prior_frame <- parse_priors.one_group(model_data)
-    file <- "inst/stan/hsgp_one_group.stan"
+    stan_obj <- stanmodels$hsgp_one_group
   } else if ("multi_group" %in% class(model_data)) {
     message("Fitting a multi-group hierarchical Stan model")
     prior_frame <- parse_priors.multi_group(model_data)
-    file <- "inst/stan/hsgp_multi_group.stan"
+    stan_obj <- stanmodels$hsgp_multi_group
   }
 
   model_data$settings <- append(model_data$settings,
@@ -175,6 +181,7 @@ gp_fit.gp_model <- function(model_data, ...) {
     M = model_data$settings$M,
     L_factor = model_data$settings$L_factor,
     w0 = model_data$settings$w0,
+    duration = model_data$settings$duration,
     t_ev = model_data$event_times,
     dt = model_data$dt,
 
@@ -184,15 +191,15 @@ gp_fit.gp_model <- function(model_data, ...) {
     kernel = match(model_data$settings$kernel,c("squared_exp",
                                                 "matern12","matern32","matern52","periodic")),
     family = match(model_data$settings$family, c("exponential","gamma","weibull",
-                                                 "log-normal","gengamma"))
+                                                 "lognormal","gengamma"))
   )
   stan_dat <- append(stan_dat, flags)
 
   options(mc.cores = parallel::detectCores())
   rstan_options(auto_write = TRUE)
 
-  fit <- rstan::stan(
-    file = file,
+  fit <- rstan::sampling(
+    object = stan_obj,
     data = stan_dat,
     chains = model_data$stan_runtime$chains,
     iter = model_data$stan_runtime$iter,

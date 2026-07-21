@@ -60,10 +60,8 @@ vector diagSPD_Periodic(real alpha, real rho, int M) {
 
 vector diagSPD_EQ(real alpha, real rho, int M, real L) {
   vector[M] indices = linspaced_vector(M, 1, M);
-
-  real factor = alpha^2 * sqrt(2 * pi()) * rho;
-  real exponent = -0.5 * (rho * pi() / (2 * L))^2;
-
+  real factor = alpha * sqrt(sqrt(2 * pi()) * rho);
+  real exponent = -0.25 * (rho * pi() / 2 / L)^2;
   return factor * exp(exponent * square(indices));
 }
 

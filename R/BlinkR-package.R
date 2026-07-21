@@ -2,20 +2,21 @@
 #'
 #' @description A DESCRIPTION OF THE PACKAGE
 #'
-#' @docType package
 #' @name BlinkR-package
 #' @aliases BlinkR
 #' @useDynLib BlinkR, .registration = TRUE
 #' @import methods
 #' @import Rcpp
+#' @import rstan
 #' @import dplyr
 #' @import tidyr
 #' @import purrr
 #' @import rkriging
 #' @import tibble
 #' @import flexsurv
-#' @import rstan
 #' @import rTensor
+#' @import ggplot2
+#' @import ggdist
 #' @import patchwork
 #' @importFrom RColorBrewer brewer.pal
 #' @importFrom MASS mvrnorm
@@ -24,5 +25,5 @@
 #'
 #' @references
 #' Stan Development Team (NA). RStan: the R interface to Stan. R package version 2.32.7. https://mc-stan.org
-#'
+"_PACKAGE"
 NULL

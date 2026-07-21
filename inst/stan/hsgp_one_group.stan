@@ -82,8 +82,10 @@ parameters {
 
 
   // indect intercept
-  vector[I] mu;
-
+  //vector[I] mu;
+  real mu;
+  real<lower=0> sigma;
+  vector[I] mu_raw;
   // renewal shape
   //real log_k_minus1;
   //vector<lower=1>[S] k;
@@ -96,7 +98,9 @@ parameters {
 }
 
 transformed parameters {
+  vector[I] mu_ind;
 
+  mu_ind = mu + mu_raw * sigma;
   matrix[I,M] z_ind;
 
   //real k = 1.0 + exp(log_k_minus1);
@@ -125,6 +129,8 @@ model {
   z_group ~ std_normal();
   to_vector(z_ind_raw) ~ std_normal();
 
+  mu_raw ~ std_normal();
+  sigma ~ exponential(1);
   if (distributions[1] == 1) {
     mu ~ normal(params[1,1],params[1,2]);
   } else if (distributions[1] == 2) {
@@ -158,7 +164,7 @@ model {
     vector[N_total] f_ind = rows_dot_product(PHI_quad[j], beta_ind[ind_id, ]);
 
 
-    eta_quad[j] = mu[ind_id] + f_group + f_ind;
+    eta_quad[j] = mu_ind[ind_id] + f_group + f_ind;
   }
 
   matrix[N_total, 3] log_kernel;

@@ -92,9 +92,14 @@ parameters {
 
 
   // indect intercept
-  vector[G] mu_group;
-  vector[I] mu_ind;
+  //vector[G] mu_group;
+  //vector[I] mu_ind;
+  real mu;
+  real<lower=0> sigma_group;
+  real<lower=0> sigma_ind;
 
+  vector<lower=1,upper=G> mu_raw_group;
+  vector<lower=1,upper=I> mu_raw_ind;
   // renewal shape
   //real log_k_minus1;
   //vector<lower=1>[S] k;
@@ -107,6 +112,10 @@ parameters {
 }
 
 transformed parameters {
+  vector<lower=1,upper=G>[G] mu_group;
+  vector<lower=1,upper=I>[I] mu_ind;
+  mu_group = mu + sigma_group * mu_raw_group;
+  mu_ind = mu_group[g_membership] + sigma_ind * mu_raw_ind;
 
   matrix[I,M] z_ind;
   matrix[G,M] z_group;
@@ -144,18 +153,20 @@ model {
   to_vector(z_group_raw) ~ std_normal();
   to_vector(z_ind_raw) ~ std_normal();
 
+  mu_raw_group ~ std_normal();
+  mu_raw_ind ~ std_normal();
+
+  sigma_group ~ exponential(1);
+  sigma_ind ~ exponential(1);
+
   if (distributions[1] == 1) {
-    mu_group ~ normal(params[1,1],params[1,2]);
-    mu_ind ~ normal(params[2,1],params[2,2]);
+    mu ~ normal(params[1,1],params[1,2]);
   } else if (distributions[1] == 2) {
-    mu_group ~ lognormal(params[1,1],params[1,2]);
-    mu_ind ~ lognormal(params[2,1],params[2,2]);
+    mu ~ lognormal(params[1,1],params[1,2]);
   } else if (distributions[1] == 3) {
-    mu_group ~ cauchy(params[1,1],params[1,2]);
-    mu_ind ~ cauchy(params[2,1],params[2,2]);
+    mu ~ cauchy(params[1,1],params[1,2]);
   } else if (distributions[1] == 4) {
-    mu_group ~ exponential(params[1,1]);
-    mu_ind ~ exponential(params[2,1]);
+    mu ~ exponential(params[1,1]);
   }
 
   apply_prior_lp(alpha_global, distributions[3], params[3, 1], params[3, 2]);

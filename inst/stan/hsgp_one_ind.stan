@@ -20,6 +20,7 @@ data {
   int<lower=0, upper=N_params> include_sigma_lognormal;
   // data
   int<lower=1> N_total;
+  real<lower=0> duration;
   vector[N_total] t_ev;
   vector[N_total] dt;
 
@@ -28,7 +29,7 @@ data {
 
 transformed data {
 
-  real L = L_factor * max(t_ev);
+  real L = L_factor * duration;
 
   // 3-point Gauss-Legendre quadrature
   vector[3] qx =

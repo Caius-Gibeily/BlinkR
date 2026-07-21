@@ -4,18 +4,6 @@
 #' @param level Character vector specifying which levels to plot.
 #'   Options include \code{"individual"}, \code{"group"}, or \code{"global"}. Defaults to all three.
 #' @param facet Logical. If \code{TRUE}, splits plots up by group or individual.
-#' @param separate_pages Logical. If \code{TRUE} and \code{facet = TRUE}, outputs a list of
-#'   arranged plots or a multi-page PDF device display via \code{gridExtra}.
-#' @param ... Additional arguments passed to methods (ignored).
-#'
-#' @export
-#' @method plot sim_traces
-#' Plot Simulation Traces
-#'
-#' @param x An object of class \code{sim_traces}.
-#' @param level Character vector specifying which levels to plot.
-#'   Options include \code{"individual"}, \code{"group"}, or \code{"global"}. Defaults to all three.
-#' @param facet Logical. If \code{TRUE}, splits plots up by group or individual.
 #' @param separate_pages Logical. If \code{TRUE} and \code{facet = TRUE}, outputs a layout
 #'   across multiple pages via \code{gridExtra}.
 #' @param ... Additional arguments passed to methods (ignored).
@@ -118,7 +106,7 @@ plot.sim_traces <- function(sim_data, level = c("individual", "group", "global")
     return(p)
   }
 
-  # --- Layout and Output Generation ---
+
   unique_groups <- unique(ind_data$group)
 
   if (!facet) {
@@ -126,7 +114,7 @@ plot.sim_traces <- function(sim_data, level = c("individual", "group", "global")
     return(p)
 
   } else {
-    # Process each group individually so the subplots match perfectly
+
     for (g in unique_groups) {
       i_sub <- ind_data |> dplyr::filter(group == g)
       g_sub <- grp_data |> dplyr::filter(group == g)

@@ -11,7 +11,7 @@ NumericVector simulate_renewal_orig(std::vector<double> time_vec, std::vector<do
   event_times.reserve(1000);
 
   double t_diff = time_vec[1] - time_vec[0];
-  double last_event = 1.0;
+  double last_event = R::rexp(modulant_vec[0]);
   event_times.push_back(last_event);
 
   gengamma_orig::density gen_pdf;
