@@ -29,10 +29,10 @@ simulate_spline_trajectories <- function(duration = 100, n_ind = 10, n_groups = 
 
   ind_traces <- .simulate_n(duration, n = n_ind * n_groups, class = "spline",
                             df = df, mu_coeffs = group_traces$coeffs[, sim_struct$group, drop = FALSE],
-                            sd_coeffs = sd_ind, g_membership = sim_struct |> pull(group))
+                            sd_coeffs = sd_ind, g_membership = sim_struct |> pull(group), level = "ind")
 
   ind_traces$traces <- ind_traces$traces |>
-    dplyr::left_join(sim_struct, by = "row_id") |>
+    dplyr::left_join(sim_struct, by = "ind") |>
     dplyr::relocate(group, ind)
 
   args_list <- mget(names(formals()), sys.frame(sys.nframe()))
@@ -90,11 +90,11 @@ simulate_boxcar_trajectories <- function(duration = 100, n_ind = 10, n_groups = 
 
   ind_traces <- .simulate_n(duration, n = n_ind * n_groups, class = "boxcar",
                             nodes = nodes, steps = steps,
-                            cycles = cycles, scale_factor = scale_factors_ind)
+                            cycles = cycles, scale_factor = scale_factors_ind, level = "ind")
 
   ind_traces$traces <- ind_traces$traces |>
-    dplyr::left_join(sim_struct, by = "row_id") |>
-    dplyr::relocate(group, ind)
+    dplyr::left_join(sim_struct, by = "ind") |>
+    dplyr::relocate(ind, group)
 
   args_list <- mget(names(formals()), sys.frame(sys.nframe()))
 
@@ -158,13 +158,13 @@ simulate_gp_trajectories <- function(duration = 100, n_groups = 1, n_ind = 10,
 
   ind_traces <- .simulate_n(duration, n = n_groups *n_ind, class = "gp",
                             kernel = kernel, alpha = alpha_ind,
-                            rho = rho_ind, nu = nu, P = P) |>
-    dplyr::left_join(sim_struct, by = "row_id") |>
+                            rho = rho_ind, nu = nu, P = P, level = "ind") |>
+    dplyr::left_join(sim_struct, by = "ind") |>
     dplyr::left_join(group_traces, by = c("group", "x"), suffix = c("_ind", "_group")) |>
     dplyr::group_by(x,group) |>
     dplyr::mutate(y_ind = y_ind - mean(y_ind)) |> dplyr::ungroup() |>
     dplyr::mutate(y = y_ind + y_group) |>
-    dplyr::relocate(group, ind, .after = "row_id")
+    dplyr::relocate(ind, .after = "group")
 
   args_list <- as.list(environment())
   exclude <- c("ind_traces","group_traces","global_trace","type")
@@ -184,13 +184,13 @@ simulate_gp_trajectories <- function(duration = 100, n_groups = 1, n_ind = 10,
 # ==============================================================================
 .create_sim_struct <- function(n_groups, n_ind) {
   tibble::rowid_to_column(
-    tidyr::expand_grid(group = as.factor(seq_len(n_groups)), ind = as.factor(seq_len(n_ind))),
-    var = "row_id"
-  ) |> mutate(row_id = as.factor(row_id))
+    tidyr::expand_grid(group = as.factor(seq_len(n_groups)), subgroup_id = as.factor(seq_len(n_ind))),
+    var = "ind"
+  ) |> mutate(ind = as.factor(ind)) |> select(-subgroup_id)
 }
 #' @noRd
 .simulate_n <- function(duration, n, class, df = 5, mu_coeffs = 0, sd_coeffs = 0.5,
-                        level = "row_id", nodes, steps, cycles, scale_factor = 1, g_membership = NULL, ...) {
+                        level = "ind", nodes, steps, cycles, scale_factor = 1, g_membership = NULL, ...) {
   class = match.arg(class,c("spline","boxcar","gp"))
 
   if (class == "spline") {

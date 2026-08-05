@@ -22,7 +22,7 @@ gp_fit.data.frame <- function(events,...) {
 
 #' @export
 #' @method gp_fit list
-gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind_id",
+gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind",
                        event_times = "event_times", dt = "dt",
 
                        M = 40, family = c("exponential","gamma","weibull","lognormal","gengamma"),
@@ -119,6 +119,7 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind_
     traces = event_data$traces, # for simulations
     group_traces = event_data$group_traces,
     global_trace = event_data$global_trace,
+    events = events,
     dt = events %>% pull(all_of(dt_str)),
     ind_id = as.numeric(as.character(ind_id)),
     g_id = as.numeric(as.character(g_id)),
@@ -137,8 +138,6 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind_
                         adapt_delta = adapt_delta,
                         max_treedepth = max_treedepth)
   )
-
-  model_data$group_traces <- event_data$group_traces
 
 
   class(model_data) <- c(subclass, "gp_model")

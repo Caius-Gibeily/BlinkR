@@ -30,7 +30,7 @@ plot.sim_traces <- function(sim_data, level = c("individual", "group", "global")
     global_data <- sim_data$global_trace
   } else if (!is.null(grp_data)) {
     x_col <- if ("x" %in% names(grp_data)) "x" else "time"
-    y_col <- if ("y" %in% names(grp_data)) "y" else "value"
+    y_col <- if ("y_offset" %in% names(grp_data)) "y_offset" else "y"
 
     global_data <- grp_data |>
       dplyr::group_by(.data[[x_col]]) |>
@@ -48,13 +48,12 @@ plot.sim_traces <- function(sim_data, level = c("individual", "group", "global")
   n_groups <- sim_data$sim_parameters$n_groups
   purple_palette <- colorRampPalette(brewer.pal(9, "Purples"))(n_groups)
 
-  # --- Helper function to build a single aligned trace + event stack ---
   build_base_plot <- function(ind_sub = NULL, grp_sub = NULL, ev_sub = NULL, title_suffix = "") {
     p <- ggplot() + theme_minimal() + labs(x = "Time (t)", y = "Eta(t)")
 
     if ("individual" %in% level && !is.null(ind_sub) && nrow(ind_sub) > 0) {
       i_x <- if ("x" %in% names(ind_sub)) "x" else "time"
-      i_y <- if ("y" %in% names(ind_sub)) "y" else "value"
+      i_y <- if ("y_offset" %in% names(ind_sub)) "y_offset" else "y"
 
       p <- p + geom_line(data = ind_sub,
                          aes(x = .data[[i_x]], y = .data[[i_y]], group = interaction(group, ind),
@@ -64,7 +63,7 @@ plot.sim_traces <- function(sim_data, level = c("individual", "group", "global")
 
     if ("group" %in% level && !is.null(grp_sub) && nrow(grp_sub) > 0) {
       g_x <- "x"
-      g_y <- "y"
+      g_y <- if ("y_offset" %in% names(grp_sub)) "y_offset" else "y"
 
       p <- p + geom_line(data = grp_sub,
                          aes(x = .data[[g_x]], y = .data[[g_y]], group = group),
@@ -74,7 +73,7 @@ plot.sim_traces <- function(sim_data, level = c("individual", "group", "global")
 
     if ("global" %in% level && !is.null(global_data) && nrow(global_data) > 0) {
       gl_x <- "x"
-      gl_y <- "y"
+      gl_y <- if ("y_offset" %in% names(global_data)) "y_offset" else "y"
 
       p <- p + geom_line(data = global_data,
                          aes(x = .data[[gl_x]], y = .data[[gl_y]]),
@@ -88,10 +87,10 @@ plot.sim_traces <- function(sim_data, level = c("individual", "group", "global")
     if (!is.null(ev_sub) && nrow(ev_sub) > 0) {
       p_below <- ggplot(data = ev_sub,
                         aes(x = event_times,
-                            y = factor(row_id),
-                            group = interaction(row_id,group),
-                            color = interaction(row_id,group),
-                            fill = interaction(row_id,group))) +
+                            y = factor(ind),
+                            group = interaction(ind,group),
+                            color = interaction(ind,group),
+                            fill = interaction(ind,group))) +
         geom_tile(width = width, height = height) +
         scale_color_viridis_d(guide = "none") +
         scale_fill_viridis_d(guide = "none") +

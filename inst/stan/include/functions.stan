@@ -132,6 +132,38 @@ matrix sum_to_zero_groups(int G, int I, int M, array[] int g_membership, matrix 
   return z_ind;
 }
 
+
+vector sum_to_zero_mu(int l0, int l1, array[] int l1_membership, vector mu_raw, array[] int l0_per_l1) {
+  vector[l0] mu_constrained;
+  int pos = 1;
+
+  for (l in 1:l1) {
+    int n = l0_per_l1[l];
+    int idx = 0;
+    int last_m = 0;
+    real group_sum = 0.0;
+
+    for (m in 1:l0) {
+      if (l1_membership[m] == l) {
+        idx += 1;
+        if (idx < n) {
+          mu_constrained[m] = mu_raw[pos];
+          group_sum += mu_raw[pos];
+          pos += 1;
+        } else {
+          last_m = m;
+        }
+      }
+    }
+
+    mu_constrained[last_m] = -group_sum;
+  }
+
+  return mu_constrained;
+}
+
+
+
 void apply_prior_lp(real param, real dist, real arg1, real arg2) {
   if (dist == 1) {
     target += normal_lpdf(param | arg1, arg2);
@@ -208,3 +240,37 @@ matrix gengamma_likelihood(int N_total, vector log_qw, array[] vector eta_quad, 
   }
   return log_kernel;
 }
+real get_rate_t(int ind, vector mu_ind, vector beta_ind_i,
+  vector beta_group, vector t, int M, real L, real w0, int kernel) {
+
+  matrix[1, M] PHI;
+  if (kernel != 5) {
+    PHI = phi(1, M, L, t);
+  } else {
+    PHI = phi_periodic(1, M, w0, t);
+  }
+
+  vector[1] f_group = PHI * beta_group;
+  vector[1] f_ind = PHI * beta_ind_i;
+  vector[1] eta_t = mu_ind[ind] + f_group + f_ind;
+
+  return exp(-eta_t[1]); // inv(exp(x)) is exp(-x)
+}
+
+// Numerically stable hazard functions using exp(lpdf - lccdf)
+real exponential_h(real dt, real rate) {
+  return exp(exponential_lpdf(dt | rate) - exponential_lccdf(dt | rate));
+}
+
+real gamma_h(real dt, real shape, real rate) {
+  return exp(gamma_lpdf(dt | shape, rate) - gamma_lccdf(dt | shape, rate));
+}
+
+real weibull_h(real dt, real shape, real scale) {
+  return exp(weibull_lpdf(dt | shape, scale) - weibull_lccdf(dt | shape, scale));
+}
+
+real lognormal_h(real dt, real mu_lognormal, real sigma_lognormal) {
+  return exp(lognormal_lpdf(dt | mu_lognormal, sigma_lognormal) - lognormal_lccdf(dt | mu_lognormal, sigma_lognormal));
+}
+

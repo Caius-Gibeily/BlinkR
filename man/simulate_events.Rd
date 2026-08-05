@@ -7,7 +7,7 @@
 simulate_events(
   trace_data,
   group = group,
-  ind = row_id,
+  ind = ind,
   family = c("exponential", "gamma", "weibull", "log-normal", "gengamma"),
   scale = NULL,
   mu = NULL,
@@ -16,7 +16,6 @@ simulate_events(
   sigma = 1,
   Q = 0,
   baseline = 0,
-  baseline_sd = 0,
   lerp = 10
 )
 }
@@ -41,11 +40,11 @@ simulate_events(
 
 \item{baseline}{Numeric. Group-level coefficient standard deviation.}
 
-\item{baseline_sd}{Numeric. Individual-level coefficient standard deviation.}
-
 \item{lerp}{Numeric. Mean coefficients for the spline basis.}
 
 \item{traces}{Tibble or Data.Frame object. A dataframe with columns containing group and individual id and their simulated latent trajectory.}
+
+\item{baseline_sd}{Numeric. Individual-level coefficient standard deviation.}
 }
 \value{
 A tibble containing simulated event times for each group.

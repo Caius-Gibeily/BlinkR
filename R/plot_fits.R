@@ -1,6 +1,7 @@
 
-
-plot.gp_model <- function(model, level = c("ind", "group", "global"), .weights = c(0.50,0.8,0.99),
+#' @export
+#' @method plot gp_model
+plot.gp_model <- function(model, level = c("ind", "group", "global"), .width= c(0.50,0.8,0.99),
                           show_ci = TRUE, facet = show_ci, show_events = TRUE, collapse_level = FALSE,
                           show_traces = TRUE, palette = "Purples", width = 0.1, height = 0.2, size = 10, ...) {
 
@@ -22,7 +23,7 @@ plot.gp_model <- function(model, level = c("ind", "group", "global"), .weights =
     stop("Global trace not present for models with one individual or group.")
   }
 
-  tidy_model <- reconstruct_traces(model,level=level,.weights=.weights,...)
+  tidy_model <- reconstruct_traces(model,level=level,.width=.width,...)
 
   y_elements <- c(tidy_model$y)
   if (show_ci) y_elements <- c(y_elements, tidy_model$ymin, tidy_model$ymax)
@@ -52,7 +53,7 @@ plot.gp_model <- function(model, level = c("ind", "group", "global"), .weights =
     } else if (!is.null(fit_sub) && nrow(fit_sub) > 0) {
       p <- p + ggplot2::geom_line(
         data = fit_sub,
-        ggplot2::aes(x = x, y = y, group = .data[[group_aes]]),
+        ggplot2::aes(x = x, y = y_offset, group = .data[[group_aes]]),
         linewidth = 0.8
       )
     }
@@ -60,7 +61,7 @@ plot.gp_model <- function(model, level = c("ind", "group", "global"), .weights =
     if (show_traces && !is.null(trace_sub) && nrow(trace_sub) > 0) {
       p <- p + ggplot2::geom_line(
         data = trace_sub,
-        ggplot2::aes(x = x, y = y, group = .data[[facet_var]]),
+        ggplot2::aes(x = x, y = y_offset, group = .data[[facet_var]]),
         inherit.aes = FALSE, linewidth = 0.7, color = "black", alpha = 0.5
       )
     }
@@ -70,16 +71,16 @@ plot.gp_model <- function(model, level = c("ind", "group", "global"), .weights =
       else if (facet_var == "group") sub_facet_var <- "ind"
       else sub_facet_var = "ind"
       y_aes_events <- "ind"
-      if (facet) {
 
-        event_aes <- ggplot2::aes(x = event_times,
-                                  y = factor(.data[[y_aes_events]]),
-                                  group = .data[[sub_facet_var]],
-                                  color = factor(.data[[y_aes_events]]),
-                                  fill = factor(.data[[y_aes_events]]))
-        y_label <- "Events"
-        y_label <- tools::toTitleCase(y_aes_events)
-      }
+
+      event_aes <- ggplot2::aes(x = event_times,
+                                y = factor(.data[[y_aes_events]]),
+                                group = .data[[sub_facet_var]],
+                                color = factor(.data[[y_aes_events]]),
+                                fill = factor(.data[[y_aes_events]]))
+      y_label <- "Events"
+      y_label <- tools::toTitleCase(y_aes_events)
+
 
       p_below <- ggplot2::ggplot(data = ev_sub, mapping = event_aes) +
         ggplot2::coord_cartesian(xlim = global_x) +
@@ -132,6 +133,7 @@ plot.gp_model <- function(model, level = c("ind", "group", "global"), .weights =
   }
 }
 
+#' @noRd
 dply_filter_equal <- function(df, col, value) {
   if (is.null(df) || nrow(df) == 0 || !(col %in% names(df))) return(NULL)
   df[df[[col]] == value, , drop = FALSE]

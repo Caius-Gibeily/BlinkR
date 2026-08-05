@@ -16,22 +16,35 @@
 #'
 #' @return A tibble containing simulated event times for each group.
 #' @export
-simulate_events <- function(trace_data, group = group, ind = row_id, family = c("exponential","gamma","weibull",
+simulate_events <- function(trace_data, group = group, ind = ind, family = c("exponential","gamma","weibull",
                                                  "log-normal","gengamma"),
                             scale = NULL, mu = NULL, shape = 1, k = 2, sigma = 1,
-                            Q = 0, baseline = 0, baseline_sd = 0, lerp = 10) {
+                            Q = 0, baseline = 0, lerp = 10) {
+
   if (is.list(trace_data)) traces <- trace_data$traces
   sim_struct <- traces |>
     group_by({{group}},{{ind}}) |> group_keys()
-
+  n_ind <- nrow(sim_struct)
   if (is.null(scale)) {
     if (length(baseline) == 1) {
-      traces <- traces |>
-        mutate(scale = 1/exp(-(y + baseline)))
-    } else {
-      traces <- traces |> group_by(row_id) |>
-        mutate(scale = exp(y + rnorm(n(),0,baseline_sd)))
-    }
+      traces <- trace_data$traces <- traces |>
+        mutate(y_offset = y + baseline,
+               scale = 1/exp(-(y_offset)))
+      trace_data$group_traces <- trace_data$group_traces |>
+        mutate(y_offset = y + baseline)
+      trace_data$global_trace <- trace_data$global_trace |>
+        mutate(y_offset = y + baseline)
+
+    } else if (length(baseline) == n_ind) {
+      traces <- trace_data$traces <- traces |> group_by(ind) |>
+        mutate(y_offset = y + baseline[ind],
+               scale = exp(y_offset))
+      trace_data$group_traces <- trace_data$group_traces |> group_by(group) |>
+        mutate(y_offset = y + tapply(baseline, sim_struct$group, mean))
+      trace_data$global_trace <- trace_data$global_trace |>
+        mutate(y_offset = y + mean(baseline))
+
+    } else stop("Please ensure a single baseline offset or a number of baseline offsets equal to the number of individuals")
 
   }
 
@@ -41,11 +54,11 @@ simulate_events <- function(trace_data, group = group, ind = row_id, family = c(
     else if (family == "weibull") k <- 1
 
     event_times <- traces |>
-      group_split(row_id) |>
+      group_split(ind) |>
       map(\(.x) .simulate_renewal(.x, modulant = scale,
                                   shape = shape, k = k, lerp = lerp)) |>
-      list_rbind(names_to = "row_id") |> mutate(row_id = as.factor(row_id)) |>
-      left_join(sim_struct, by = "row_id")|> relocate(group,.after=row_id)
+      list_rbind(names_to = "ind") |> mutate(ind = as.factor(ind)) |>
+      left_join(sim_struct, by = "ind")|> relocate(group,.after=ind)
 
 
   } else if (family == "log-normal") {
@@ -55,11 +68,11 @@ simulate_events <- function(trace_data, group = group, ind = row_id, family = c(
     }
 
     event_times <- traces |>
-      group_split(row_id) |>
+      group_split(ind) |>
       map(\(.x) .simulate_renewal(.x, modulant = mu,
                                   sigma = sigma, Q = 0, lerp = lerp)) |>
-      list_rbind(names_to = "row_id") |> mutate(row_id = as.factor(row_id)) |>
-      left_join(sim_struct, by = "row_id") |> relocate(group,.after=row_id)
+      list_rbind(names_to = "ind") |> mutate(ind = as.factor(ind)) |>
+      left_join(sim_struct, by = "ind") |> relocate(group,.after=ind)
   } else stop("Please choose a survival function from ",
               "exponential, gamma, weibull, log-normal, gengamma")
   if (is.list(trace_data)) {
@@ -77,7 +90,6 @@ simulate_events <- function(trace_data, group = group, ind = row_id, family = c(
 
 #' @noRd
 .simulate_renewal <- function(trace,modulant,shape,k,sigma,Q,lerp = 20) {
-
 
   trace_parts <- trace |>
     dplyr::select({{modulant}}) |> dplyr::pull()

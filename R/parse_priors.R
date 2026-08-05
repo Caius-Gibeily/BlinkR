@@ -14,7 +14,7 @@ parse_priors.one_ind <- function(model_setup) {
   prior_frame <- .process_prior_frame(path = "inst/extdata/default_priors_one_ind.csv",
                                       valid_variables = valid_variables,
                                       priors = model_setup$settings$priors)
-  print(prior_frame)
+
   return(prior_frame)
 }
 
@@ -28,18 +28,21 @@ parse_priors.one_group <- function(model_setup) {
   prior_frame <- .process_prior_frame(path = "inst/extdata/default_priors_one_group.csv",
                                       valid_variables = valid_variables,
                                       priors = model_setup$settings$priors)
-}
+  return(prior_frame)
+  }
 
 #' @export
 #' @method parse_priors multi_group
 parse_priors.multi_group <- function(model_setup) {
-  valid_variables = c("mu_group","mu_ind","alpha_global",
+  valid_variables = c("mu","alpha_global",
                       "alpha_group","alpha_ind", "rho_global","rho_group","rho_ind") %>%
     append(.get_family_priors(model_setup$settings$family))
 
   prior_frame <- .process_prior_frame(path = "inst/extdata/default_priors_multi_group.csv",
                                       valid_variables = valid_variables,
                                       priors = model_setup$settings$priors)
+  return(prior_frame)
+
 }
 
 #############

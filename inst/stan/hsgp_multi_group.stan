@@ -98,8 +98,8 @@ parameters {
   real<lower=0> sigma_group;
   real<lower=0> sigma_ind;
 
-  vector<lower=1,upper=G> mu_raw_group;
-  vector<lower=1,upper=I> mu_raw_ind;
+  vector[G - 1] mu_raw_group;
+  vector[I - G] mu_raw_ind;
   // renewal shape
   //real log_k_minus1;
   //vector<lower=1>[S] k;
@@ -112,10 +112,15 @@ parameters {
 }
 
 transformed parameters {
-  vector<lower=1,upper=G>[G] mu_group;
-  vector<lower=1,upper=I>[I] mu_ind;
-  mu_group = mu + sigma_group * mu_raw_group;
-  mu_ind = mu_group[g_membership] + sigma_ind * mu_raw_ind;
+
+  // zero-constrained group mu intercepts
+  vector[G] mu_raw_group_std = sum_to_zero_mu(G, 1, rep_array(1,G), mu_raw_group, {G});
+  vector[G] mu_group = mu + sigma_group * mu_raw_group_std;
+
+  // zero-constrained individual mu intercepts
+  vector[I] mu_raw_ind_std = sum_to_zero_mu(I, G, g_membership, mu_raw_ind, I_per_group);
+  vector[I] mu_ind = mu_group[g_membership] + sigma_ind * mu_raw_ind_std;
+
 
   matrix[I,M] z_ind;
   matrix[G,M] z_group;
@@ -156,8 +161,8 @@ model {
   mu_raw_group ~ std_normal();
   mu_raw_ind ~ std_normal();
 
-  sigma_group ~ exponential(1);
-  sigma_ind ~ exponential(1);
+  sigma_group ~ normal(0.5,0.2);
+  sigma_ind ~ normal(0.5,0.2);
 
   if (distributions[1] == 1) {
     mu ~ normal(params[1,1],params[1,2]);
@@ -169,13 +174,13 @@ model {
     mu ~ exponential(params[1,1]);
   }
 
-  apply_prior_lp(alpha_global, distributions[3], params[3, 1], params[3, 2]);
-  apply_prior_lp(alpha_group, distributions[4], params[4, 1], params[4, 2]);
-  apply_prior_lp(alpha_ind, distributions[5], params[5, 1], params[5, 2]);
+  apply_prior_lp(alpha_global, distributions[2], params[2, 1], params[2, 2]);
+  apply_prior_lp(alpha_group, distributions[3], params[3, 1], params[3, 2]);
+  apply_prior_lp(alpha_ind, distributions[4], params[4, 1], params[4, 2]);
 
-  apply_prior_lp(rho_global, distributions[6], params[6, 1], params[6, 2]);
-  apply_prior_lp(rho_group, distributions[7], params[7, 1], params[7, 2]);
-  apply_prior_lp(rho_ind, distributions[8], params[8, 1], params[8, 2]);
+  apply_prior_lp(rho_global, distributions[5], params[5, 1], params[5, 2]);
+  apply_prior_lp(rho_group, distributions[6], params[6, 1], params[6, 2]);
+  apply_prior_lp(rho_ind, distributions[7], params[7, 1], params[7, 2]);
 
 
   if (include_k != 0) apply_prior_lp(k[1], distributions[include_k],
@@ -193,7 +198,7 @@ model {
     vector[N_total] f_ind = rows_dot_product(PHI_quad[j], beta_ind[ind_id, ]);
 
 
-    eta_quad[j] = mu_group[g_id] + mu_ind[ind_id] + f_global + f_group + f_ind;
+    eta_quad[j] = mu_ind[ind_id] + f_global + f_group + f_ind;
   }
 
   matrix[N_total, 3] log_kernel;
