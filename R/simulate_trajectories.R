@@ -149,22 +149,29 @@ simulate_gp_trajectories <- function(duration = 100, n_groups = 1, n_ind = 10,
                               kernel = kernel, alpha = alpha_group,
                               rho = rho_group, nu = nu, P = P, level = "group")
 
-  if (type != "one_group") {
+  if (type == "multi_group") {
     group_traces <- group_traces %>% dplyr::group_by(x) |> dplyr::mutate(y = y - mean(y)) |>
     dplyr::ungroup() |> dplyr::mutate(y = y + global_trace$y)
   } else {
     group_traces <- group_traces |> dplyr::mutate(y = y + global_trace$y)
   }
 
-  ind_traces <- .simulate_n(duration, n = n_groups *n_ind, class = "gp",
+  ind_traces <- .simulate_n(duration, n = n_groups * n_ind, class = "gp",
                             kernel = kernel, alpha = alpha_ind,
                             rho = rho_ind, nu = nu, P = P, level = "ind") |>
     dplyr::left_join(sim_struct, by = "ind") |>
-    dplyr::left_join(group_traces, by = c("group", "x"), suffix = c("_ind", "_group")) |>
-    dplyr::group_by(x,group) |>
-    dplyr::mutate(y_ind = y_ind - mean(y_ind)) |> dplyr::ungroup() |>
-    dplyr::mutate(y = y_ind + y_group) |>
-    dplyr::relocate(ind, .after = "group")
+    dplyr::left_join(group_traces, by = c("group", "x"), suffix = c("_ind", "_group"))
+  if (type != "one_ind") {
+    ind_traces <- ind_traces |>
+      dplyr::group_by(x,group) |>
+      dplyr::mutate(y_ind = y_ind - mean(y_ind)) |> dplyr::ungroup() |>
+      dplyr::mutate(y = y_ind + y_group) |>
+      dplyr::relocate(ind, .after = "group")
+  } else {
+    ind_traces <- ind_traces |>
+      dplyr::mutate(y = y_ind + y_group) |>
+      dplyr::relocate(ind, .after = "group")
+  }
 
   args_list <- as.list(environment())
   exclude <- c("ind_traces","group_traces","global_trace","type")

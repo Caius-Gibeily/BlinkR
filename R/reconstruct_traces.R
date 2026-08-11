@@ -7,7 +7,8 @@
 # prior predictive checks: copies of each stan script but only with generated quantities
 # option to select sample trajectories, event rasters/heatmaps, event rates and interevent distributions
 #' @export
-reconstruct_traces <- function(model,resolution=0.01,.width=c(0.5,0.8,0.99),...) {
+reconstruct_traces <- function(model,resolution=0.01,
+                               .width=c(0.5,0.8,0.99),draw_samples=FALSE,n_samples=100,level = "ind",...) {
   UseMethod("reconstruct_traces")
 }
 
@@ -23,7 +24,12 @@ reconstruct_traces.one_ind <- function(model,.width,...) {
   else phi_basis <- .phi_periodic(t_grid, M, model$settings$w0)
 
   n_grid <- nrow(phi_basis)
-  post_data <- rstan::extract(model$fit)
+  if ("gp_model" %in% class(model)) {
+    post_data <- rstan::extract(model$fit)
+  } else if ("gp_prior_pc" %in% class(model)) {
+    post_data <- rstan::extract(model$prior_pc)
+  }
+
   n_draws <- length(post_data$rho_group)
 
   I <- model$I
@@ -47,7 +53,7 @@ reconstruct_traces.one_ind <- function(model,.width,...) {
 
 #' @export
 #' @method reconstruct_traces one_group
-reconstruct_traces.one_group <- function(model,.width,level="ind",...) {
+reconstruct_traces.one_group <- function(model,.width=.width,level="ind",draw_samples=FALSE,n_samples=100,...) {
 
   M <- model$settings$M
   L <- model$settings$L_factor * model$settings$duration
@@ -57,7 +63,13 @@ reconstruct_traces.one_group <- function(model,.width,level="ind",...) {
   } else phi_basis <- .phi_periodic(t_grid, M, model$settings$w0)
 
   n_grid <- nrow(phi_basis)
-  post_data <- rstan::extract(model$fit)
+
+  if ("gp_model" %in% class(model)) {
+    post_data <- rstan::extract(model$fit)
+  } else if ("gp_prior_pc" %in% class(model)) {
+    post_data <- rstan::extract(model$prior_pc)
+  }
+
   n_draws <- length(post_data$rho_group)
 
   I <- model$I
@@ -75,17 +87,26 @@ reconstruct_traces.one_group <- function(model,.width,level="ind",...) {
                                                STATS = mu_ind, FUN = "+")
   f_group_ind <- f_ind |> sweep(MARGIN = c(1,3),
                                  STATS = t(f_group), FUN = "+")
+  if (!draw_samples) {
+    if (level == "ind") {
+      gp_dat <- f_group_ind@data
+      tidy_quants <- .tidy_quantiles(gp_dat,t_grid,I,g_membership,n_grid,level=level,.width = .width)
+    } else if (level == "group") {
+      gp_dat <- f_group |> sweep(MARGIN = 2, STATS = mu, FUN = "+")
+      tidy_quants <- .tidy_quantiles(t(gp_dat),t_grid,G,g_membership,n_grid,level = level,.width = .width)
+    }
 
-  if (level == "ind") {
-    gp_dat <- f_group_ind@data
-    tidy_quants <- .tidy_quantiles(gp_dat,t_grid,I,g_membership,n_grid,level=level,.width = .width)
-  } else if (level == "group") {
-    gp_dat <- f_group |> sweep(MARGIN = 2, STATS = mu, FUN = "+")
-    tidy_quants <- .tidy_quantiles(t(gp_dat),t_grid,G,g_membership,n_grid,level = level,.width = .width)
+    class(tidy_quants) <- c("one_group","gp_model",class(tidy_quants))
+    return(tidy_quants)
   }
+  else {
+    survival_params <- list(k = post_data$k,
+                            shape = post_data$shape,
+                            sigma = post_data$sigma_lognormal)
 
-  class(tidy_quants) <- c("one_group","gp_model",class(tidy_quants))
-  return(tidy_quants)
+    tidy_samples <- .tidy_samples(f_group_ind@data,survival_params,t_grid,I,g_membership,n_grid,n_samples=n_samples)
+    return(tidy_samples)
+  }
 }
 
 #' @export
@@ -100,7 +121,13 @@ reconstruct_traces.multi_group <- function(model,.width,level="ind",...) {
   else phi_basis <- .phi_periodic(t_grid, M, model$settings$w0)
 
   n_grid <- nrow(phi_basis)
-  post_data <- rstan::extract(model$fit)
+
+  if ("gp_model" %in% class(model)) {
+    post_data <- rstan::extract(model$fit)
+  } else if ("gp_prior_pc" %in% class(model)) {
+    post_data <- rstan::extract(model$prior_pc)
+  }
+
   n_draws <- length(post_data$rho_global)
 
   I <- model$I
@@ -141,13 +168,20 @@ reconstruct_traces.multi_group <- function(model,.width,level="ind",...) {
   return(tidy_quants)
 }
 
+#' @export
+ppc_draw_traces <- function(model,level,...) {
+  tidy_samples <- reconstruct_traces(model=model,draw_samples=TRUE,level=level,...)
+  return(tidy_samples)
+}
 
+#' @noRd
 .phi <- function(x, M, L) {
   outer(x,seq_len(M), function(x, m)
     sin(pi * m * (x + L) / (2 * L)) / sqrt(L)
   )
 }
 
+#' @noRd
 .phi_periodic <- function(x,M,w0) {
   k <- seq_len(M / 2)
   w0xk <- outer(w0 * x, k)
@@ -156,7 +190,8 @@ reconstruct_traces.multi_group <- function(model,.width,level="ind",...) {
 
 
 #' @noRd
-.tidy_quantiles <- function(f_data, t_grid, N, g_membership, n_grid, .width = c(0.5, 0.8, 0.99), level = "ind") {
+.tidy_quantiles <- function(f_data, t_grid, N, g_membership, n_grid,
+                            .width = c(0.5, 0.8, 0.99), level = "ind") {
 
   dims <- dim(f_data)
   gp_flattened <- matrix(f_data, nrow = dims[1], ncol = prod(dims[-1]))
@@ -196,6 +231,38 @@ reconstruct_traces.multi_group <- function(model,.width,level="ind",...) {
 
   left_join(long_df, medians_df, by = id_cols)
 }
+#' @noRd
+.tidy_samples <- function(f_data, survival_params, t_grid, N, g_membership, n_grid, n_samples = 100) {
+  if (is.null(n_samples)) {
+    n_samples <- 100
+  }
+  dims <- dim(f_data)
+  if (n_samples > dims[1]) {
+    stop("Please choose a number of samples no greater than the number of post-warmup samples.")
+  }
+
+  sample_indices <- sample(dims[1], size = n_samples)
+
+  sampled_gp <- f_data[sample_indices, 1:N, 1:n_grid]
+
+  y_vec <- as.vector(aperm(sampled_gp,c(3,2,1)))
+
+  base_df <- tidyr::expand_grid(
+    sample = as.factor(1:n_samples),
+    ind = as.factor(1:N),
+    grid_idx = seq_along(t_grid)
+  ) |>
+    mutate(
+      x = t_grid[grid_idx],
+      group = as.factor(g_membership[ind])
+    ) |>
+    select(ind, group, sample, x)
+
+  sampled_traces <- bind_cols(base_df, y = y_vec)
+
+  return(list(sampled_traces = sampled_traces,
+              survival_params = lapply(survival_params, function(mat) mat[sample_indices])))
+}
 
 #' @noRd
 .diagSPD_EQ <- function(alpha, rho, M, L) {
@@ -205,6 +272,7 @@ reconstruct_traces.multi_group <- function(model,.width,level="ind",...) {
   factor * exp(exponent * indices^2)
 }
 
+#' @noRd
 .diagSPD_Matern52 <- function(alpha, rho, M, L) {
   factor <- 16 * (sqrt(5) / rho)^5
   indices <- (pi / (2 * L) * seq_len(M))^2
@@ -245,3 +313,4 @@ reconstruct_traces.multi_group <- function(model,.width,level="ind",...) {
   # append_row(q, q) is equivalent to concatenating the vector with itself
   return(append_row(q,q))
 }
+

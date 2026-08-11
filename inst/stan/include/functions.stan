@@ -176,6 +176,20 @@ void apply_prior_lp(real param, real dist, real arg1, real arg2) {
   }
 }
 
+real apply_prior_rng(real dist, real arg1, real arg2) {
+  real param;
+  if (dist == 1) {
+    param = normal_rng(arg1, arg2);
+  } else if (dist == 2) {
+    param = lognormal_rng(arg1, arg2);
+  } else if (dist == 3) {
+    param = cauchy_rng(arg1, arg2);
+  } else if (dist == 4) {
+    param = exponential_rng(arg1);
+  }
+  return param;
+}
+
 matrix exponential_likelihood(int N_total, vector log_qw, array[] vector eta_quad, vector dt) {
 
   matrix[N_total, 3] log_kernel;

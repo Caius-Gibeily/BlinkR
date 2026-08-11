@@ -18,6 +18,7 @@
 #' @import ggplot2
 #' @import ggdist
 #' @import patchwork
+#' @importFrom cowplot plot_grid
 #' @importFrom RColorBrewer brewer.pal
 #' @importFrom MASS mvrnorm
 #' @importFrom rstantools rstan_config

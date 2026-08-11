@@ -23,7 +23,7 @@ gp_fit.data.frame <- function(events,...) {
 #' @export
 #' @method gp_fit list
 gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind",
-                       event_times = "event_times", dt = "dt",
+                       event_times = "event_times", dt = "dt",prior_pc = FALSE,
 
                        M = 40, family = c("exponential","gamma","weibull","lognormal","gengamma"),
                        kernel = c("squared_exp", "matern12","matern32","matern52","periodic"),
@@ -70,6 +70,7 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind"
     if (I == 1) {
       subclass <- "one_ind"
       ind_id <- rep(1, nrow(events))
+      G <- 1
       g_id <- rep(1, nrow(events))
       g_membership <- 1
     } else {
@@ -139,8 +140,8 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind"
                         max_treedepth = max_treedepth)
   )
 
-
-  class(model_data) <- c(subclass, "gp_model")
+  if (!prior_pc) class(model_data) <- c("gp_model",subclass)
+  else class(model_data) <- c("gp_prior_pc",subclass)
   gp_fit(model_data)
 
 }
@@ -210,6 +211,75 @@ gp_fit.gp_model <- function(model_data, ...) {
   return(model_data)
 }
 
+#' @export
+#' @method gp_fit gp_prior_pc
+gp_fit.gp_prior_pc <- function(prior_pc_data, ...) {
+  if ("one_ind" %in% class(prior_pc_data)) {
+    message("Running prior predictive checks on model parameters")
+    prior_frame <- parse_priors.one_ind(prior_pc_data)
+    stan_obj <- stanmodels$prior_pc_one_ind
+  } else if ("one_group" %in% class(prior_pc_data)) {
+    message("Running prior predictive checks on model parameters")
+    prior_frame <- parse_priors.one_group(prior_pc_data)
+    stan_obj <- stanmodels$prior_pc_one_group
+  } else if ("multi_group" %in% class(prior_pc_data)) {
+    message("Running prior predictive checks on model parameters")
+    prior_frame <- parse_priors.multi_group(prior_pc_data)
+    stan_obj <- stanmodels$prior_pc_multi_group
+  }
+
+  prior_pc_data$settings <- append(prior_pc_data$settings,
+                                   list(variables=prior_frame %>%
+                                          pull(prior_variable)))
+
+  flags <- .get_flags(prior_pc_data)
+
+  stan_dat <- list(
+    I = prior_pc_data$I,
+    ind_id = prior_pc_data$ind_id,
+    G = prior_pc_data$G,
+    g_id = prior_pc_data$g_id,
+    g_membership = prior_pc_data$g_membership,
+    I_per_group = tabulate(prior_pc_data$g_membership),
+
+    M = prior_pc_data$settings$M,
+    L_factor = prior_pc_data$settings$L_factor,
+    w0 = prior_pc_data$settings$w0,
+    duration = prior_pc_data$settings$duration,
+
+    distributions = as.double(prior_frame$distribution_id),
+    N_params = nrow(prior_frame),
+    params = as.matrix(prior_frame[c("param_1","param_2")]),
+    kernel = match(prior_pc_data$settings$kernel,c("squared_exp",
+                                                   "matern12","matern32","matern52","periodic")),
+    family = match(prior_pc_data$settings$family, c("exponential","gamma","weibull",
+                                                    "lognormal","gengamma"))
+  )
+
+  stan_dat <- append(stan_dat, flags)
+
+  options(mc.cores = parallel::detectCores())
+  rstan_options(auto_write = TRUE)
+
+  fit <- rstan::sampling(
+    object = stan_obj,
+    data = stan_dat,
+    chains = prior_pc_data$stan_runtime$chains,
+    iter = prior_pc_data$stan_runtime$iter,
+    algorithm = "Fixed_param")
+
+  prior_pc_data$prior_pc <- fit
+  class(prior_pc_data) <- c("full_config",class(prior_pc_data))
+
+  return(prior_pc_data)
+}
+
+gp_fit.full_config <- function(model_data) {
+  class(model_data) <- setdiff(class(model_data), c("gp_prior_pc","full_config"))
+  class(model_data) <- c("gp_model",class(model_data))
+  print(class(model_data))
+  gp_fit(model_data)
+}
 #' @noRd
 .get_flags <- function(model_data) {
   flags <- list()
@@ -235,5 +305,7 @@ gp_fit.gp_model <- function(model_data, ...) {
   return(flags)
 
 }
+
+
 
 

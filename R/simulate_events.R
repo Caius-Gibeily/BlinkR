@@ -19,30 +19,42 @@
 simulate_events <- function(trace_data, group = group, ind = ind, family = c("exponential","gamma","weibull",
                                                  "log-normal","gengamma"),
                             scale = NULL, mu = NULL, shape = 1, k = 2, sigma = 1,
-                            Q = 0, baseline = 0, lerp = 10) {
+                            Q = 0, baseline = 0, lerp = 100) {
 
-  if (is.list(trace_data)) traces <- trace_data$traces
-  sim_struct <- traces |>
+  if (is.list(trace_data) & !is.data.frame(trace_data)) traces <- trace_data$traces
+  else if (is.data.frame(trace_data)) {
+    traces <- trace_data
+    trace_data <- list(traces = traces)
+  }
+  sim_struct <- trace_data$traces <- traces |>
     group_by({{group}},{{ind}}) |> group_keys()
   n_ind <- nrow(sim_struct)
   if (is.null(scale)) {
     if (length(baseline) == 1) {
+
       traces <- trace_data$traces <- traces |>
         mutate(y_offset = y + baseline,
                scale = 1/exp(-(y_offset)))
-      trace_data$group_traces <- trace_data$group_traces |>
-        mutate(y_offset = y + baseline)
-      trace_data$global_trace <- trace_data$global_trace |>
-        mutate(y_offset = y + baseline)
-
+      if (!is.null(trace_data$group_traces)) {
+        trace_data$group_traces <- trace_data$group_traces |>
+          mutate(y_offset = y + baseline)
+      }
+      if (!is.null(trace_data$global_traces)) {
+        trace_data$global_trace <- trace_data$global_trace |>
+          mutate(y_offset = y + baseline)
+      }
     } else if (length(baseline) == n_ind) {
       traces <- trace_data$traces <- traces |> group_by(ind) |>
         mutate(y_offset = y + baseline[ind],
                scale = exp(y_offset))
-      trace_data$group_traces <- trace_data$group_traces |> group_by(group) |>
-        mutate(y_offset = y + tapply(baseline, sim_struct$group, mean))
-      trace_data$global_trace <- trace_data$global_trace |>
-        mutate(y_offset = y + mean(baseline))
+      if (!is.null(trace_data$group_traces)) {
+        trace_data$group_traces <- trace_data$group_traces |> group_by(group) |>
+          mutate(y_offset = y + tapply(baseline, sim_struct$group, mean))
+      }
+      if (!is.null(trace_data$global_traces)) {
+        trace_data$global_trace <- trace_data$global_trace |>
+          mutate(y_offset = y + mean(baseline))
+      }
 
     } else stop("Please ensure a single baseline offset or a number of baseline offsets equal to the number of individuals")
 
@@ -91,12 +103,20 @@ simulate_events <- function(trace_data, group = group, ind = ind, family = c("ex
 #' @noRd
 .simulate_renewal <- function(trace,modulant,shape,k,sigma,Q,lerp = 20) {
 
-  trace_parts <- trace |>
-    dplyr::select({{modulant}}) |> dplyr::pull()
-  trace_parts <- trace_parts |> approx(n = length(trace_parts) * lerp)
+  if (!is.null(lerp)) {
+    trace_parts <- trace |> pull({{modulant}})
+    trace_parts <- trace_parts |> approx(n = max(trace$x) * lerp)
 
-  modulant <- trace_parts$y
-  time <- trace_parts$x
+    modulant <- trace_parts$y
+    time <- trace_parts$x
+
+  } else {
+    modulant <- trace |> pull({{modulant}})
+    time <- trace$x
+  }
+
+
+
 
   if (!missing(shape) && !missing(k)) {
     events <- simulate_renewal_orig(time,modulant,shape,k)

@@ -8,7 +8,7 @@ parse_priors <- function(model_setup, ...) {
 #' @export
 #' @method parse_priors one_ind
 parse_priors.one_ind <- function(model_setup) {
-  valid_variables = c("mu","alpha","rho") %>%
+  valid_variables = c("mu_ind","alpha_ind","rho_ind") %>%
     append(.get_family_priors(model_setup$settings$family))
 
   prior_frame <- .process_prior_frame(path = "inst/extdata/default_priors_one_ind.csv",

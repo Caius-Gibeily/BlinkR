@@ -16,7 +16,7 @@ simulate_events(
   sigma = 1,
   Q = 0,
   baseline = 0,
-  lerp = 10
+  lerp = 100
 )
 }
 \arguments{
