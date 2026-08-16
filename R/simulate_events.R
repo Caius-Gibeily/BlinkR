@@ -51,7 +51,7 @@ simulate_events <- function(trace_data, group = group, ind = ind, family = c("ex
         trace_data$group_traces <- trace_data$group_traces |> group_by(group) |>
           mutate(y_offset = y + tapply(baseline, sim_struct$group, mean))
       }
-      if (!is.null(trace_data$global_traces)) {
+      if (!is.null(trace_data$global_trace)) {
         trace_data$global_trace <- trace_data$global_trace |>
           mutate(y_offset = y + mean(baseline))
       }

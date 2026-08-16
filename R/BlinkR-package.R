@@ -18,6 +18,7 @@
 #' @import ggplot2
 #' @import ggdist
 #' @import patchwork
+#' @import loo
 #' @importFrom cowplot plot_grid
 #' @importFrom RColorBrewer brewer.pal
 #' @importFrom MASS mvrnorm

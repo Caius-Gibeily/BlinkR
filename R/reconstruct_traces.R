@@ -14,7 +14,7 @@ reconstruct_traces <- function(model,resolution=0.01,
 
 #' @export
 #' @method reconstruct_traces one_ind
-reconstruct_traces.one_ind <- function(model,.width,...) {
+reconstruct_traces.one_ind <- function(model,.width=.width,from_prior=FALSE,...) {
 
   M <- model$settings$M
   L <- model$settings$L_factor * model$settings$duration
@@ -24,11 +24,11 @@ reconstruct_traces.one_ind <- function(model,.width,...) {
   else phi_basis <- .phi_periodic(t_grid, M, model$settings$w0)
 
   n_grid <- nrow(phi_basis)
-  if ("gp_model" %in% class(model)) {
+  if (!from_prior & "gp_model" %in% class(model)) {
     post_data <- rstan::extract(model$fit)
-  } else if ("gp_prior_pc" %in% class(model)) {
+  } else if (from_prior & !is.null(model$prior_pc) | "gp_prior_pc" %in% class(model)) {
     post_data <- rstan::extract(model$prior_pc)
-  }
+  } else if (from_prior & is.null(model$prior_pc)) stop("Please ensure your model has prior data. You may do so by running gp_fit(prior_pc=TRUE)")
 
   n_draws <- length(post_data$rho_group)
 
@@ -53,7 +53,8 @@ reconstruct_traces.one_ind <- function(model,.width,...) {
 
 #' @export
 #' @method reconstruct_traces one_group
-reconstruct_traces.one_group <- function(model,.width=.width,level="ind",draw_samples=FALSE,n_samples=100,...) {
+reconstruct_traces.one_group <- function(model,.width=c(0.5,0.8,0.99),
+                                         level="ind",draw_samples=FALSE,n_samples=100,dev_only=FALSE,from_prior=FALSE,...) {
 
   M <- model$settings$M
   L <- model$settings$L_factor * model$settings$duration
@@ -64,11 +65,12 @@ reconstruct_traces.one_group <- function(model,.width=.width,level="ind",draw_sa
 
   n_grid <- nrow(phi_basis)
 
-  if ("gp_model" %in% class(model)) {
+  if (!from_prior & "gp_model" %in% class(model)) {
     post_data <- rstan::extract(model$fit)
-  } else if ("gp_prior_pc" %in% class(model)) {
+  } else if (from_prior & !is.null(model$prior_pc) | "gp_prior_pc" %in% class(model)) {
     post_data <- rstan::extract(model$prior_pc)
-  }
+  } else if (from_prior & is.null(model$prior_pc)) stop("Please ensure your model has prior data. You may do so by running gp_fit(prior_pc=TRUE)")
+
 
   n_draws <- length(post_data$rho_group)
 
@@ -89,7 +91,8 @@ reconstruct_traces.one_group <- function(model,.width=.width,level="ind",draw_sa
                                  STATS = t(f_group), FUN = "+")
   if (!draw_samples) {
     if (level == "ind") {
-      gp_dat <- f_group_ind@data
+      if (!dev_only) gp_dat <- f_group_ind@data
+      else gp_dat <- f_ind@data
       tidy_quants <- .tidy_quantiles(gp_dat,t_grid,I,g_membership,n_grid,level=level,.width = .width)
     } else if (level == "group") {
       gp_dat <- f_group |> sweep(MARGIN = 2, STATS = mu, FUN = "+")
@@ -111,7 +114,8 @@ reconstruct_traces.one_group <- function(model,.width=.width,level="ind",draw_sa
 
 #' @export
 #' @method reconstruct_traces multi_group
-reconstruct_traces.multi_group <- function(model,.width,level="ind",...) {
+reconstruct_traces.multi_group <- function(model,.width=c(0.5,0.8,0.99),
+                                           level="ind",draw_samples=FALSE,n_samples=100,dev_only=TRUE,from_prior=FALSE,...) {
 
   M <- model$settings$M
   L <- model$settings$L_factor * model$settings$duration
@@ -122,11 +126,12 @@ reconstruct_traces.multi_group <- function(model,.width,level="ind",...) {
 
   n_grid <- nrow(phi_basis)
 
-  if ("gp_model" %in% class(model)) {
+  if (!from_prior & "gp_model" %in% class(model)) {
     post_data <- rstan::extract(model$fit)
-  } else if ("gp_prior_pc" %in% class(model)) {
+  } else if (from_prior & !is.null(model$prior_pc) | "gp_prior_pc" %in% class(model)) {
     post_data <- rstan::extract(model$prior_pc)
-  }
+  } else if (from_prior & is.null(model$prior_pc)) stop("Please ensure your model has prior data. You may do so by running gp_fit(prior_pc=TRUE)")
+
 
   n_draws <- length(post_data$rho_global)
 
@@ -139,6 +144,7 @@ reconstruct_traces.multi_group <- function(model,.width,level="ind",...) {
   beta_group <- post_data$beta_group |> as.tensor()
   beta_ind <- post_data$beta_ind |> as.tensor()
 
+  mu <- post_data$mu
   mu_group <- post_data$mu_group
   mu_ind <- post_data$mu_ind
 
@@ -149,28 +155,44 @@ reconstruct_traces.multi_group <- function(model,.width,level="ind",...) {
                                               STATS = mu_ind, FUN = "+")
   f_group_ind <- (f_group[,g_membership,] + f_ind) |> sweep(MARGIN = c(1,3),
                                                            STATS = t(f_global), FUN = "+")
-  if (level == "ind") {
-    gp_dat <- f_group_ind@data
-    tidy_quants <- .tidy_quantiles(gp_dat,t_grid,I,g_membership,n_grid,level=level,.width = .width)
-  } else if (level == "group") {
-    f_group <- f_group |> sweep(MARGIN = c(1,2),
-                                STATS = mu_group, FUN = "+") |>
-      sweep(MARGIN = c(1,3),
-            STATS = t(f_global), FUN = "+")
-    gp_dat <- f_group@data
-    tidy_quants <- .tidy_quantiles(gp_dat,t_grid,G,g_membership,n_grid,level=level,.width = .width)
-  } else if (level == "global") {
-    gp_dat <- f_global |> sweep(MARGIN = 2, STATS = mu, FUN = "+")
-    tidy_quants <- .tidy_quantiles(t(gp_dat),t_grid,1,g_membership,n_grid,level=level,.width = .width)
-  }
+  if (!draw_samples) {
+    if (level == "ind") {
+      if (!dev_only) gp_dat <- f_group_ind@data
+      else gp_dat <- f_ind@data
+      tidy_quants <- .tidy_quantiles(gp_dat,t_grid,I,g_membership,n_grid,level=level,.width = .width)
+    } else if (level == "group") {
+      if (!dev_only) {
+        f_group <- f_group |> sweep(MARGIN = c(1,2),STATS = mu_group, FUN = "+") |>
+          sweep(MARGIN = c(1,3), STATS = t(f_global), FUN = "+")
+        gp_dat <- f_group@data
+      }
+      else {
+        f_group <- f_group |> sweep(MARGIN = c(1,2),STATS = mu_group, FUN = "+")
+        gp_dat <- f_group@data
+      }
 
-  class(tidy_quants) <- c("one_group","gp_model",class(tidy_quants))
-  return(tidy_quants)
+      tidy_quants <- .tidy_quantiles(gp_dat,t_grid,G,g_membership,n_grid,level=level,.width = .width)
+    } else if (level == "global") {
+      gp_dat <- f_global |> sweep(MARGIN = 2, STATS = mu, FUN = "+")
+      tidy_quants <- .tidy_quantiles(t(gp_dat),t_grid,1,g_membership,n_grid,level=level,.width = .width)
+    }
+
+    class(tidy_quants) <- c("one_group","gp_model",class(tidy_quants))
+    return(tidy_quants)
+  } else {
+    survival_params <- list(k = post_data$k,
+                            shape = post_data$shape,
+                            sigma = post_data$sigma_lognormal)
+
+    tidy_samples <- .tidy_samples(f_group_ind@data,survival_params,t_grid,I,g_membership,n_grid,n_samples=n_samples)
+    print(tidy_samples)
+    return(tidy_samples)
+  }
 }
 
 #' @export
-ppc_draw_traces <- function(model,level,...) {
-  tidy_samples <- reconstruct_traces(model=model,draw_samples=TRUE,level=level,...)
+ppc_draw_traces <- function(model,level="ind",.width=c(0.5,0.8,0.99),...) {
+  tidy_samples <- reconstruct_traces(model=model,draw_samples=TRUE,level=level,.width=.width,...)
   return(tidy_samples)
 }
 
@@ -229,7 +251,9 @@ ppc_draw_traces <- function(model,level,...) {
       mutate(.width = w)
   })
 
-  left_join(long_df, medians_df, by = id_cols)
+  df_final <- left_join(long_df, medians_df, by = id_cols)
+
+  return(df_final)
 }
 #' @noRd
 .tidy_samples <- function(f_data, survival_params, t_grid, N, g_membership, n_grid, n_samples = 100) {

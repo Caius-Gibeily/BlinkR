@@ -43,7 +43,9 @@ END_RCPP
 RcppExport SEXP _rcpp_module_boot_stan_fit4hsgp_multi_group_mod();
 RcppExport SEXP _rcpp_module_boot_stan_fit4hsgp_one_group_mod();
 RcppExport SEXP _rcpp_module_boot_stan_fit4hsgp_one_ind_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4prior_pc_multi_group_mod();
 RcppExport SEXP _rcpp_module_boot_stan_fit4prior_pc_one_group_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4prior_pc_one_ind_mod();
 
 static const R_CallMethodDef CallEntries[] = {
     {"_BlinkR_simulate_renewal", (DL_FUNC) &_BlinkR_simulate_renewal, 4},
@@ -51,7 +53,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_rcpp_module_boot_stan_fit4hsgp_multi_group_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4hsgp_multi_group_mod, 0},
     {"_rcpp_module_boot_stan_fit4hsgp_one_group_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4hsgp_one_group_mod, 0},
     {"_rcpp_module_boot_stan_fit4hsgp_one_ind_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4hsgp_one_ind_mod, 0},
+    {"_rcpp_module_boot_stan_fit4prior_pc_multi_group_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4prior_pc_multi_group_mod, 0},
     {"_rcpp_module_boot_stan_fit4prior_pc_one_group_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4prior_pc_one_group_mod, 0},
+    {"_rcpp_module_boot_stan_fit4prior_pc_one_ind_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4prior_pc_one_ind_mod, 0},
     {NULL, NULL, 0}
 };
 

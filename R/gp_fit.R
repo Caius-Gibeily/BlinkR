@@ -23,7 +23,7 @@ gp_fit.data.frame <- function(events,...) {
 #' @export
 #' @method gp_fit list
 gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind",
-                       event_times = "event_times", dt = "dt",prior_pc = FALSE,
+                       event_times = "event_times", dt = "dt",run = c("prior_pc","fit"),
 
                        M = 40, family = c("exponential","gamma","weibull","lognormal","gengamma"),
                        kernel = c("squared_exp", "matern12","matern32","matern52","periodic"),
@@ -54,6 +54,7 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind"
     duration <- events %>% reframe(max_t = max(.data[[event_times_str]])) %>% pull(max_t)
     warning("Setting duration to the latest event time. If this is incorrect, please set duration.")
   }
+  print("test")
   if (is.null(ind_str) || !ind_str %in% names(events)) {
     warning("Individual ID not provided or not found in 'event_data'. Defaulting to 'one_ind' model")
     subclass <- "one_ind"
@@ -79,6 +80,7 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind"
       if (is.null(group_str) || !group_str %in% names(events)) {
         warning("Group ID not provided or not found in 'events'. Defaulting to 'one_group' model.")
         subclass <- "one_group"
+        G <- 1
         g_id <- rep(1, nrow(events))
         g_membership <- rep(1, I)
 
@@ -120,7 +122,8 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind"
     traces = event_data$traces, # for simulations
     group_traces = event_data$group_traces,
     global_trace = event_data$global_trace,
-    events = events,
+    events = events |> rename(ind = .data[[ind_str]],
+                              event_times = .data[[event_times_str]]),
     dt = events %>% pull(all_of(dt_str)),
     ind_id = as.numeric(as.character(ind_id)),
     g_id = as.numeric(as.character(g_id)),
@@ -140,10 +143,16 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind"
                         max_treedepth = max_treedepth)
   )
 
-  if (!prior_pc) class(model_data) <- c("gp_model",subclass)
-  else class(model_data) <- c("gp_prior_pc",subclass)
-  gp_fit(model_data)
-
+  if ("prior_pc" %in% run & "fit" %in% run) {
+    class(model_data) <- c("gp_prior_pc",subclass)
+    gp_fit(model_data) |> gp_fit()
+  } else if ("prior_pc" %in% run) {
+    class(model_data) <- c("gp_prior_pc",subclass)
+    gp_fit(model_data)
+  } else if ("fit" %in% run) {
+    class(model_data) <- c("gp_model",subclass)
+    gp_fit(model_data)
+  }
 }
 
 #' @export
@@ -274,10 +283,11 @@ gp_fit.gp_prior_pc <- function(prior_pc_data, ...) {
   return(prior_pc_data)
 }
 
+#' @export
+#' @method gp_fit full_config
 gp_fit.full_config <- function(model_data) {
   class(model_data) <- setdiff(class(model_data), c("gp_prior_pc","full_config"))
   class(model_data) <- c("gp_model",class(model_data))
-  print(class(model_data))
   gp_fit(model_data)
 }
 #' @noRd

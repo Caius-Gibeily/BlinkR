@@ -1,17 +1,17 @@
 #' @export
 plot_posterior_pc <- function(model, n_samples = 1000, palette = "Blues",
                               .width = c(0.5,0.8,0.99), bw_kde = 0.5, bw_rate = 5, scale_factor = 1, gridsize = 500) {
-  post_pc_events <- ppc_draw_events(model,n_samples = n_samples)
+  ppc_events <- ppc_draw_events(model,n_samples = n_samples)
 
   if (!("gp_model") %in% class(model)) stop("Please use a fitted renewr model")
 
   # Global blink rate
-  p1 <- post_pc_get_eventrate(model = model,scale_factor=scale_factor)
+  p1 <- ppc_get_eventrate(model = model,scale_factor=scale_factor)
   # Interevent distribution
-  p2 <- post_pc_get_interevent_dist(post_pc_events = post_pc_events,
+  p2 <- ppc_get_interevent_dist(ppc_events = ppc_events,
                                     model = model)
   # Instantaneous blink rate
-  p3 <- post_pc_get_inst_eventrate(post_pc_events = post_pc_events,
+  p3 <- ppc_get_inst_eventrate(ppc_events = ppc_events,
                                    model = model)
 
   .ggplot_successive(p1,p2,p3)
@@ -36,7 +36,7 @@ ppc_draw_events <- function(model, n_samples) {
     "exponential"
   }
 
-  post_pc_events <- samples |> group_split(sample) |>
+  ppc_events <- samples |> group_split(sample) |>
     imap(\(samp,i) {
       ppc <- do.call(simulate_events,
                          c(list(trace_data = samp, family = family, lerp = NULL),
@@ -45,21 +45,22 @@ ppc_draw_events <- function(model, n_samples) {
       ) |>
     list_rbind(names_to = "sample")
 
-  return(post_pc_events)
+  return(ppc_events)
 }
 
 #' @export
-post_pc_get_eventrate <- function(model,post_pc_events=NULL,scale_factor=1,return_plot=TRUE, n_samples=1000) {
-  if (is.null(post_pc_events)) {
-    post_pc_events <- post_pc_draw_events(model,n_samples = n_samples)
+ppc_get_eventrate <- function(model,ppc_events=NULL,scale_factor=1,.width=c(0.5,0.8,0.99),palette = "Purples",return_plot=TRUE, n_samples=1000) {
+  if (is.null(ppc_events)) {
+    ppc_events <- ppc_draw_events(model,n_samples = n_samples)
   }
+
   br_global <- model$events |>
     dplyr::group_by(ind) |>
     dplyr::reframe(ind = unique(ind),
                    group = unique(group),
                    br_global = n() / model$settings$duration * scale_factor)
 
-  br_global_ppc <- post_pc_events |>
+  br_global_ppc <- ppc_events |>
     dplyr::group_by(ind,sample) |>
     dplyr::reframe(sample = unique(sample),
                    ind = unique(ind),
@@ -88,19 +89,19 @@ post_pc_get_eventrate <- function(model,post_pc_events=NULL,scale_factor=1,retur
 }
 
 #' @export
-post_pc_get_interevent_dist <- function(model, post_pc_events = NULL, n_samples = 1000, bw_kde = 1.2, return_plot = TRUE) {
-  if (is.null(post_pc_events) & is.null(model)) {
+ppc_get_interevent_dist <- function(model, ppc_events = NULL, n_samples = 1000, .width=c(0.5,0.8,0.99), bw_kde = 1.2, return_plot = TRUE) {
+  if (is.null(ppc_events) & is.null(model)) {
     stop("Please provide either posterior generated events or a fitted Renewr model")
-  } else if (is.null(post_pc_events)) {
-    post_pc_events <- post_pc_draw_events(model,n_samples = n_samples)
+  } else if (is.null(ppc_events)) {
+    ppc_events <- ppc_draw_events(model,n_samples = n_samples)
   }
 
-  dt_high <- stats::quantile(post_pc_events$dt, 0.99)
-  iei_dist <- post_pc_events |>
+  dt_high <- stats::quantile(ppc_events$dt, 0.99)
+  iei_dist <- ppc_events |>
     dplyr::group_by(ind, sample) |>
     dplyr::reframe(
-      x = density(dt, n = 512, from = 0, to = dt_high, bw = bw_kde)$x,
-      y = density(dt, n = 512, from = 0, to = dt_high, bw = bw_kde)$y) |>
+      x = density(dt, n = 512, from = 0, to = quantile(dt,0.9), bw = bw_kde)$x,
+      y = density(dt, n = 512, from = 0, to = quantile(dt,0.9), bw = bw_kde)$y) |>
     dplyr::group_by(ind, x) |>
     ggdist::mean_qi(y, .width = .width) |>
     dplyr::ungroup()
@@ -116,7 +117,7 @@ post_pc_get_interevent_dist <- function(model, post_pc_events = NULL, n_samples 
                                            ymin = .lower, ymax = .upper,
                                            fill = forcats::fct_rev(ordered(.width)), group = interaction(ind, .width)),
                               alpha = 0.6) +
-      ggplot2::facet_wrap(~ ind) +
+      ggplot2::facet_wrap(~ ind, scale="free_x") +
       ggplot2::scale_fill_brewer(palette = palette, name = "CI Width") +
       ggplot2::theme_minimal() +
       ggplot2::labs(x = "Inter-event Interval (IBI  (s))", y = "Density")
@@ -128,19 +129,19 @@ post_pc_get_interevent_dist <- function(model, post_pc_events = NULL, n_samples 
 }
 
 #' @export
-post_pc_get_inst_eventrate <- function(post_pc_events = NULL,model,
-                                       bw_rate = 5,gridsize = 500, return_plot = TRUE) {
+ppc_get_inst_eventrate <- function(ppc_events = NULL,model,
+                                       bw_rate = 5,gridsize = 500, n_samples = 1000, .width = c(0.5,0.8,0.99), return_plot = TRUE, palette = "Purples",show_events=TRUE) {
 
-  if (is.null(post_pc_events) & is.null(model)) {
+  if (is.null(ppc_events) & is.null(model)) {
     stop("Please provide either posterior generated events or a fitted Renewr model")
-  } else if (is.null(post_pc_events)) {
-    post_pc_events <- post_pc_draw_events(model,n_samples = n_samples)
+  } else if (is.null(ppc_events)) {
+    ppc_events <- ppc_draw_events(model,n_samples = n_samples)
   }
 
   time_grid <- seq(0,model$settings$duration,
                    length.out = gridsize)
 
-  inst_rate_ppc <- post_pc_events |>
+  inst_rate_ppc <- ppc_events |>
     dplyr::group_by(ind, sample) |>
     dplyr::summarise(
       rate = list(sapply(time_grid, function(t)
@@ -171,14 +172,14 @@ post_pc_get_inst_eventrate <- function(post_pc_events = NULL,model,
       ggplot2::geom_line(data=inst_rate,
                          ggplot2::aes(x = x, y = rate, group=ind),
                          linewidth=1,color = "black", alpha = 0.5) +
-      ggplot2::facet_wrap(~ind, scales = "free_y") +
+      ggplot2::facet_wrap(~ind, scales = "free") +
       ggplot2::theme_minimal() +
       ggplot2::coord_cartesian(xlim = c(0, model$settings$duration))
+    if (!show_events) return(p_inst_event_rate)
 
-    # Attach events too
-    p_ob_events <- ggplot(model$events, ggplot2::aes(x = event_times, y = factor(1), group = ind)) +
+      p_ob_events <- ggplot(model$events, ggplot2::aes(x = event_times, y = factor(1), group = ind)) +
       ggplot2::geom_tile(width = 0.3, height = 0.5) +
-      ggplot2::labs(x = "Time", y = y_label) +
+      ggplot2::labs(x = "Time", y = "Ind") +
       ggplot2::facet_wrap(~ind) +
       ggplot2::theme_minimal() +
       ggplot2::theme(axis.text.y = ggplot2::element_blank(),
@@ -188,7 +189,7 @@ post_pc_get_inst_eventrate <- function(post_pc_events = NULL,model,
                      axis.title.x = ggplot2::element_blank()) +
       ggplot2::coord_cartesian(xlim = c(0, model$settings$duration))
 
-    p_post_pc_events <- ggplot2::ggplot(post_pc_events, ggplot2::aes(x = event_times, y = factor(sample),
+    p_ppc_events <- ggplot2::ggplot(ppc_events, ggplot2::aes(x = event_times, y = factor(sample),
                                                                      group = interaction(ind,sample))) +
       ggplot2::geom_tile(width = 0.5, height = 1) +
       ggplot2::labs(x = "Time", y = "Ind") +
@@ -203,7 +204,7 @@ post_pc_get_inst_eventrate <- function(post_pc_events = NULL,model,
       ggplot2::coord_cartesian(xlim = c(0, model$settings$duration))
 
     p <- cowplot::plot_grid(p_inst_event_rate, p_ob_events,
-                             p_post_pc_events , align = "v",
+                             p_ppc_events , align = "v",
                              ncol = 1, rel_heights = c(1.5,0.4,0.8),
                              rel_widths = c(1,0.5,1))
     return(p)
@@ -219,13 +220,21 @@ post_pc_get_inst_eventrate <- function(post_pc_events = NULL,model,
 
 #' @noRd
 .ggplot_successive <- function(...) {
-  plots <- list(...)
+  input_list <- list(...)
+
+  if (length(input_list) == 1 && is.list(input_list[[1]])) {
+    plots <- input_list[[1]]
+  } else {
+    plots <- input_list
+  }
+
   for (i in seq_along(plots)) {
-    if (i > 1) {
+    print(plots[[i]])
+
+    if (i < length(plots)) {
       res <- readline(prompt = "Hit <Return> to see next plot (or 'q' to quit): ")
       if (tolower(trimws(res)) == "q") break
     }
-    print(plots[[i]])
   }
 }
 

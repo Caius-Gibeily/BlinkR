@@ -132,6 +132,39 @@ matrix sum_to_zero_groups(int G, int I, int M, array[] int g_membership, matrix 
   return z_ind;
 }
 
+matrix constrain_groups(int G, int I, int M, array[] int g_membership, matrix z_ind_raw, array[] int I_per_group) {
+  matrix[I, M] z_ind;
+  int pos = 1;
+
+  for (g in 1:G) {
+    int n = I_per_group[g];
+
+    matrix[n, M] group_raw;
+    for (row_idx in 1:n) {
+      group_raw[row_idx, ] = z_ind_raw[pos, ];
+      pos += 1;
+    }
+
+    real scale_factor = sqrt(n / (n - 1.0));
+    matrix[n, M] group_centered;
+
+    for (m in 1:M) {
+      real col_mean = mean(group_raw[, m]);
+      group_centered[, m] = (group_raw[, m] - col_mean) * scale_factor;
+    }
+
+    int idx = 1;
+    for (i in 1:I) {
+      if (g_membership[i] == g) {
+        z_ind[i, ] = group_centered[idx, ];
+        idx += 1;
+      }
+    }
+  }
+
+  return z_ind;
+}
+
 
 vector sum_to_zero_mu(int l0, int l1, array[] int l1_membership, vector mu_raw, array[] int l0_per_l1) {
   vector[l0] mu_constrained;
@@ -162,6 +195,51 @@ vector sum_to_zero_mu(int l0, int l1, array[] int l1_membership, vector mu_raw, 
   return mu_constrained;
 }
 
+matrix qr_decomp(int N) {
+  matrix[N, N - 1] Q_R;
+  for (i in 1:(N - 1)) {
+    for (j in 1:N) {
+      if (j <= i) {
+        Q_R[j, i] = 1.0 / sqrt(i * (i + 1.0));
+      } else if (j == i + 1) {
+        Q_R[j, i] = -i / sqrt(i * (i + 1.0));
+      } else {
+        Q_R[j, i] = 0.0;
+      }
+    }
+  }
+  return Q_R;
+}
+
+vector constrain_mu(int l0, int l1, array[] int l1_membership, vector mu_raw, array[] int l0_per_l1) {
+  vector[l0] mu_constrained;
+  int pos = 1;
+
+  for (l in 1:l1) {
+    int n = l0_per_l1[l];
+
+    vector[n] group_raw;
+    for (i in 1:n) {
+      group_raw[i] = mu_raw[pos];
+      pos += 1;
+    }
+
+    real group_mean = mean(group_raw);
+
+    real scale_factor = sqrt(n / (n - 1.0));
+    vector[n] group_centered = (group_raw - group_mean) * scale_factor;
+
+    int idx = 1;
+    for (m in 1:l0) {
+      if (l1_membership[m] == l) {
+        mu_constrained[m] = group_centered[idx];
+        idx += 1;
+      }
+    }
+  }
+
+  return mu_constrained;
+}
 
 
 void apply_prior_lp(real param, real dist, real arg1, real arg2) {
@@ -176,16 +254,25 @@ void apply_prior_lp(real param, real dist, real arg1, real arg2) {
   }
 }
 
-real apply_prior_rng(real dist, real arg1, real arg2) {
-  real param;
-  if (dist == 1) {
-    param = normal_rng(arg1, arg2);
-  } else if (dist == 2) {
-    param = lognormal_rng(arg1, arg2);
-  } else if (dist == 3) {
-    param = cauchy_rng(arg1, arg2);
-  } else if (dist == 4) {
-    param = exponential_rng(arg1);
+real apply_prior_rng(real dist, real arg1, real arg2, int apply_floor) {
+  real param = -1;
+  real floor_value;
+  if (apply_floor == 1) {
+    floor_value = 1;
+  } else {
+    floor_value = 0;
+  }
+
+  while (param < floor_value) {
+    if (dist == 1) {
+      param = normal_rng(arg1, arg2);
+    } else if (dist == 2) {
+      param = lognormal_rng(arg1, arg2);
+    } else if (dist == 3) {
+      param = cauchy_rng(arg1, arg2);
+    } else if (dist == 4) {
+      param = exponential_rng(arg1);
+    }
   }
   return param;
 }

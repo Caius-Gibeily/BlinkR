@@ -71,6 +71,9 @@ transformed data {
       PHI_quad[j] = phi_periodic(N_total,M,w0,t_quad);
     }
   }
+
+  matrix[G,G-1] Q_R = qr_decomp(G);
+
 }
 
 parameters {
@@ -78,7 +81,7 @@ parameters {
   // population GP
   vector[M] z_global;
   matrix[G-1,M] z_group_raw;
-  matrix[I-G,M] z_ind_raw;
+  matrix[I,M] z_ind_raw;
 
   real<lower=0> rho_global;
   real<lower=0> alpha_global;
@@ -99,7 +102,7 @@ parameters {
   real<lower=0> sigma_ind;
 
   vector[G - 1] mu_raw_group;
-  vector[I - G] mu_raw_ind;
+  vector[I] mu_raw_ind;
   // renewal shape
   //real log_k_minus1;
   //vector<lower=1>[S] k;
@@ -114,11 +117,11 @@ parameters {
 transformed parameters {
 
   // zero-constrained group mu intercepts
-  vector[G] mu_raw_group_std = sum_to_zero_mu(G, 1, rep_array(1,G), mu_raw_group, {G});
+  vector[G] mu_raw_group_std = Q_R * mu_raw_group; //sum_to_zero_mu(G, 1, rep_array(1,G), mu_raw_group, {G});
   vector[G] mu_group = mu + sigma_group * mu_raw_group_std;
 
   // zero-constrained individual mu intercepts
-  vector[I] mu_raw_ind_std = sum_to_zero_mu(I, G, g_membership, mu_raw_ind, I_per_group);
+  vector[I] mu_raw_ind_std = constrain_mu(I, G, g_membership, mu_raw_ind, I_per_group);
   vector[I] mu_ind = mu_group[g_membership] + sigma_ind * mu_raw_ind_std;
 
 
@@ -135,13 +138,14 @@ transformed parameters {
   diag_S_ind = get_diagSPD(alpha_ind,rho_ind,M,L,kernel);
 
 
-  z_group[1:(G - 1), ] = z_group_raw;
+  //z_group[1:(G - 1), ] = z_group_raw;
 
-  for (m in 1:M) {
-    z_group[G, m] = -sum(z_group_raw[, m]);
-  }
+  //for (m in 1:M) {
+  //  z_group[G, m] = -sum(z_group_raw[, m]);
+  //}
+  z_group = Q_R * z_group_raw;
 
-  z_ind = sum_to_zero_groups(G, I, M, g_membership, z_ind_raw, I_per_group);
+  z_ind = constrain_groups(G, I, M, g_membership, z_ind_raw, I_per_group);
 
   vector[M] beta_global = diag_S_global .* z_global;
 

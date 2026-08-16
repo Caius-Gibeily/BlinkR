@@ -66,6 +66,8 @@ transformed data {
     }
   }
 
+  matrix[I,I-1] Q_R = qr_decomp(I);
+
 }
 
 parameters {
@@ -100,7 +102,7 @@ parameters {
 
 transformed parameters {
 
-  vector[I] mu_raw_ind_std = sum_to_zero_mu(I, 1, rep_array(1,I), mu_raw_ind, {I});
+  vector[I] mu_raw_ind_std = Q_R * mu_raw_ind; //mu_raw_ind_std = sum_to_zero_mu(I, 1, rep_array(1,I), mu_raw_ind, {I}); //mu_raw_ind_std = Q_R * mu_raw_ind;
   vector[I] mu_ind = mu + mu_raw_ind_std * sigma_ind;
 
   matrix[I,M] z_ind;
@@ -115,11 +117,11 @@ transformed parameters {
   diag_S_ind = get_diagSPD(alpha_ind,rho_ind,M,L,kernel);
 
 
-  z_ind[1:(I - 1), ] = z_ind_raw;
-
-  for (m in 1:M) {
-    z_ind[I, m] = -sum(z_ind_raw[, m]);
-  }
+  //z_ind[1:(I - 1), ] = z_ind_raw;
+  z_ind = Q_R * z_ind_raw;
+  //for (m in 1:M) {
+  //  z_ind[I, m] = -sum(z_ind_raw[, m]);
+  //}
 
   vector[M] beta_group = diag_S_group .* z_group;
 

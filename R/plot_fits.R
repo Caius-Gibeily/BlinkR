@@ -2,7 +2,7 @@
 #' @export
 #' @method plot gp_model
 plot.gp_model <- function(model, level = c("ind", "group", "global"), .width= c(0.50,0.8,0.99),
-                          show_ci = TRUE, facet = show_ci, show_events = TRUE, collapse_level = FALSE,
+                          show_ci = TRUE, facet = show_ci, show_events = TRUE, dev_only = FALSE,collapse_level = FALSE,
                           show_traces = TRUE, palette = "Purples", width = 0.1, height = 0.2, size = 10, ...) {
 
 
@@ -13,7 +13,7 @@ plot.gp_model <- function(model, level = c("ind", "group", "global"), .width= c(
     stop("Global trace not present for models with one individual or group.")
   }
 
-  tidy_model <- reconstruct_traces(model,level=level,.width=.width,...)
+  tidy_model <- reconstruct_traces(model,level=level,.width=.width,dev_only=dev_only,...)
 
   y_elements <- c(tidy_model$y)
   if (show_ci) y_elements <- c(y_elements, tidy_model$ymin, tidy_model$ymax)
@@ -43,7 +43,7 @@ plot.gp_model <- function(model, level = c("ind", "group", "global"), .width= c(
     } else if (!is.null(fit_sub) && nrow(fit_sub) > 0) {
       p <- p + ggplot2::geom_line(
         data = fit_sub,
-        ggplot2::aes(x = x, y = y_offset, group = .data[[group_aes]]),
+        ggplot2::aes(x = x, y = y, group = .data[[group_aes]]),
         linewidth = 0.8
       )
     }
@@ -123,6 +123,8 @@ plot.gp_model <- function(model, level = c("ind", "group", "global"), .width= c(
   }
 }
 
+#' @export
+#' @method plot gp_prior_pc
 plot.gp_prior_pc <- function(model, level = c("ind", "group", "global"), .width= c(0.50,0.8,0.99),
                           show_ci = TRUE, facet = show_ci, collapse_level = FALSE, show_generated_traces = TRUE,
                           palette = "Purples", n_samples = 100, ...) {
@@ -202,6 +204,7 @@ plot.gp_prior_pc <- function(model, level = c("ind", "group", "global"), .width=
   }
 
 }
+
 
 #' @noRd
 dply_filter_equal <- function(df, col, value) {
