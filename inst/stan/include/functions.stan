@@ -259,8 +259,10 @@ real apply_prior_rng(real dist, real arg1, real arg2, int apply_floor) {
   real floor_value;
   if (apply_floor == 1) {
     floor_value = 1;
-  } else {
+  } else if (apply_floor == 0) {
     floor_value = 0;
+  } else {
+    floor_value = negative_infinity();
   }
 
   while (param < floor_value) {

@@ -14,7 +14,11 @@ reconstruct_traces <- function(model,resolution=0.01,
 
 #' @export
 #' @method reconstruct_traces one_ind
-reconstruct_traces.one_ind <- function(model,.width=.width,from_prior=FALSE,...) {
+reconstruct_traces.one_ind <- function(model,.width=.width,
+                                       draw_samples=FALSE,n_samples=100,prior=FALSE,...) {
+  if (hasArg(dev_only) && isTRUE(list(...)$dev_only)) {
+    warning("Computing deviations is not possible in a single-individual model with one hierarchical level. Defaulting to individual GP trace")
+  }
 
   M <- model$settings$M
   L <- model$settings$L_factor * model$settings$duration
@@ -24,37 +28,49 @@ reconstruct_traces.one_ind <- function(model,.width=.width,from_prior=FALSE,...)
   else phi_basis <- .phi_periodic(t_grid, M, model$settings$w0)
 
   n_grid <- nrow(phi_basis)
-  if (!from_prior & "gp_model" %in% class(model)) {
+  if (!prior & "gp_model" %in% class(model)) {
     post_data <- rstan::extract(model$fit)
-  } else if (from_prior & !is.null(model$prior_pc) | "gp_prior_pc" %in% class(model)) {
+  } else if (prior & !is.null(model$prior_pc) | "gp_prior_pc" %in% class(model)) {
     post_data <- rstan::extract(model$prior_pc)
-  } else if (from_prior & is.null(model$prior_pc)) stop("Please ensure your model has prior data. You may do so by running gp_fit(prior_pc=TRUE)")
-
+  } else if (prior & is.null(model$prior_pc)) {
+    stop("Please ensure your model has prior data. You may do so by running gp_fit(prior_pc=TRUE)")
+  }
   n_draws <- length(post_data$rho_group)
 
   I <- model$I
   G <- 1
   g_membership <- 1
 
-  beta <- post_data$beta
+  beta_ind <- post_data$beta_ind
 
-  mu <- post_data$mu
+  mu_ind <- post_data$mu_ind
 
-  f <- phi_basis %*% t(beta) |> sweep(MARGIN = 2,
-                                       STATS = mu, FUN = "+")
+  f_ind <- phi_basis %*% t(beta_ind) |> sweep(MARGIN = 2,
+                                       STATS = mu_ind, FUN = "+")
 
 
-  gp_dat <- f
+  gp_dat <- f_ind
+  if (!draw_samples) {
+    tidy_quants <- .tidy_quantiles(t(gp_dat),t_grid,I,g_membership,n_grid,.width)
+    class(tidy_quants) <- c("one_group","gp_model",class(tidy_quants))
+    return(tidy_quants)
+  } else {
+    survival_params <- list(k = post_data$k,
+                            shape = post_data$shape,
+                            sigma = post_data$sigma_lognormal)
+    gp_dat <- t(gp_dat)
+    dim(gp_dat) <- c(nrow(gp_dat),1,ncol(gp_dat))
 
-  tidy_quants <- .tidy_quantiles(t(gp_dat),t_grid,I,g_membership,n_grid,.width,...)
-  class(tidy_quants) <- c("one_group","gp_model",class(tidy_quants))
-  return(tidy_quants)
+    tidy_samples <- .tidy_samples(gp_dat,survival_params,t_grid,I,g_membership,n_grid,n_samples=n_samples)
+    return(tidy_samples)
+  }
+
 }
 
 #' @export
 #' @method reconstruct_traces one_group
 reconstruct_traces.one_group <- function(model,.width=c(0.5,0.8,0.99),
-                                         level="ind",draw_samples=FALSE,n_samples=100,dev_only=FALSE,from_prior=FALSE,...) {
+                                         level="ind",draw_samples=FALSE,n_samples=100,dev_only=FALSE,prior=FALSE,...) {
 
   M <- model$settings$M
   L <- model$settings$L_factor * model$settings$duration
@@ -65,11 +81,11 @@ reconstruct_traces.one_group <- function(model,.width=c(0.5,0.8,0.99),
 
   n_grid <- nrow(phi_basis)
 
-  if (!from_prior & "gp_model" %in% class(model)) {
+  if (!prior & "gp_model" %in% class(model)) {
     post_data <- rstan::extract(model$fit)
-  } else if (from_prior & !is.null(model$prior_pc) | "gp_prior_pc" %in% class(model)) {
+  } else if (prior & !is.null(model$prior_pc) | "gp_prior_pc" %in% class(model)) {
     post_data <- rstan::extract(model$prior_pc)
-  } else if (from_prior & is.null(model$prior_pc)) stop("Please ensure your model has prior data. You may do so by running gp_fit(prior_pc=TRUE)")
+  } else if (prior & is.null(model$prior_pc)) stop("Please ensure your model has prior data. You may do so by running gp_fit(prior_pc=TRUE)")
 
 
   n_draws <- length(post_data$rho_group)
@@ -80,7 +96,7 @@ reconstruct_traces.one_group <- function(model,.width=c(0.5,0.8,0.99),
   beta_group <- post_data$beta_group
   beta_ind <- post_data$beta_ind |> rTensor::as.tensor()
 
-  mu <- post_data$mu
+  mu_group <- post_data$mu_group
 
   mu_ind <- post_data$mu_ind
   f_group <- phi_basis %*% t(beta_group)
@@ -95,7 +111,7 @@ reconstruct_traces.one_group <- function(model,.width=c(0.5,0.8,0.99),
       else gp_dat <- f_ind@data
       tidy_quants <- .tidy_quantiles(gp_dat,t_grid,I,g_membership,n_grid,level=level,.width = .width)
     } else if (level == "group") {
-      gp_dat <- f_group |> sweep(MARGIN = 2, STATS = mu, FUN = "+")
+      gp_dat <- f_group |> sweep(MARGIN = 2, STATS = mu_group, FUN = "+")
       tidy_quants <- .tidy_quantiles(t(gp_dat),t_grid,G,g_membership,n_grid,level = level,.width = .width)
     }
 
@@ -115,7 +131,7 @@ reconstruct_traces.one_group <- function(model,.width=c(0.5,0.8,0.99),
 #' @export
 #' @method reconstruct_traces multi_group
 reconstruct_traces.multi_group <- function(model,.width=c(0.5,0.8,0.99),
-                                           level="ind",draw_samples=FALSE,n_samples=100,dev_only=TRUE,from_prior=FALSE,...) {
+                                           level="ind",draw_samples=FALSE,n_samples=100,dev_only=TRUE,prior=FALSE,...) {
 
   M <- model$settings$M
   L <- model$settings$L_factor * model$settings$duration
@@ -126,11 +142,11 @@ reconstruct_traces.multi_group <- function(model,.width=c(0.5,0.8,0.99),
 
   n_grid <- nrow(phi_basis)
 
-  if (!from_prior & "gp_model" %in% class(model)) {
+  if (!prior & "gp_model" %in% class(model)) {
     post_data <- rstan::extract(model$fit)
-  } else if (from_prior & !is.null(model$prior_pc) | "gp_prior_pc" %in% class(model)) {
+  } else if (prior & !is.null(model$prior_pc) | "gp_prior_pc" %in% class(model)) {
     post_data <- rstan::extract(model$prior_pc)
-  } else if (from_prior & is.null(model$prior_pc)) stop("Please ensure your model has prior data. You may do so by running gp_fit(prior_pc=TRUE)")
+  } else if (prior & is.null(model$prior_pc)) stop("Please ensure your model has prior data. You may do so by running gp_fit(prior_pc=TRUE)")
 
 
   n_draws <- length(post_data$rho_global)
@@ -144,7 +160,7 @@ reconstruct_traces.multi_group <- function(model,.width=c(0.5,0.8,0.99),
   beta_group <- post_data$beta_group |> as.tensor()
   beta_ind <- post_data$beta_ind |> as.tensor()
 
-  mu <- post_data$mu
+  mu_global <- post_data$mu_global
   mu_group <- post_data$mu_group
   mu_ind <- post_data$mu_ind
 
@@ -171,28 +187,38 @@ reconstruct_traces.multi_group <- function(model,.width=c(0.5,0.8,0.99),
         gp_dat <- f_group@data
       }
 
-      tidy_quants <- .tidy_quantiles(gp_dat,t_grid,G,g_membership,n_grid,level=level,.width = .width)
+      tidy_quants <- .tidy_quantiles(gp_dat,t_grid,G,g_membership,
+                                     n_grid,level=level,.width = .width)
     } else if (level == "global") {
-      gp_dat <- f_global |> sweep(MARGIN = 2, STATS = mu, FUN = "+")
-      tidy_quants <- .tidy_quantiles(t(gp_dat),t_grid,1,g_membership,n_grid,level=level,.width = .width)
-    }
+      if (dev_only) {
+        warning("Computing deviations only can only be performed at lower hierarchy levels (ind, group). Defaulting to global GP trace")
+      }
 
-    class(tidy_quants) <- c("one_group","gp_model",class(tidy_quants))
+      gp_dat <- f_global |> sweep(MARGIN = 2, STATS = mu_global, FUN = "+")
+
+      tidy_quants <- .tidy_quantiles(t(gp_dat),t_grid,1,g_membership,
+                                     n_grid,level=level,.width = .width)
+
+
+    } else stop("Please choose a level from 'ind', 'group' and 'global'")
+
+    class(tidy_quants) <- c("multi_group","gp_model",class(tidy_quants))
     return(tidy_quants)
+
   } else {
     survival_params <- list(k = post_data$k,
                             shape = post_data$shape,
                             sigma = post_data$sigma_lognormal)
 
     tidy_samples <- .tidy_samples(f_group_ind@data,survival_params,t_grid,I,g_membership,n_grid,n_samples=n_samples)
-    print(tidy_samples)
+
     return(tidy_samples)
   }
 }
 
 #' @export
-ppc_draw_traces <- function(model,level="ind",.width=c(0.5,0.8,0.99),...) {
-  tidy_samples <- reconstruct_traces(model=model,draw_samples=TRUE,level=level,.width=.width,...)
+ppc_draw_traces <- function(model,level="ind",.width=c(0.5,0.8,0.99),prior=FALSE,...) {
+  tidy_samples <- reconstruct_traces(model=model,draw_samples=TRUE,level=level,.width=.width,prior=prior,...)
   return(tidy_samples)
 }
 
@@ -261,6 +287,7 @@ ppc_draw_traces <- function(model,level="ind",.width=c(0.5,0.8,0.99),...) {
     n_samples <- 100
   }
   dims <- dim(f_data)
+
   if (n_samples > dims[1]) {
     stop("Please choose a number of samples no greater than the number of post-warmup samples.")
   }
@@ -269,6 +296,9 @@ ppc_draw_traces <- function(model,level="ind",.width=c(0.5,0.8,0.99),...) {
 
   sampled_gp <- f_data[sample_indices, 1:N, 1:n_grid]
 
+  if (length(dim(sampled_gp)) == 2) {
+    dim(sampled_gp) <- c(nrow(sampled_gp),1,ncol(sampled_gp))
+  }
   y_vec <- as.vector(aperm(sampled_gp,c(3,2,1)))
 
   base_df <- tidyr::expand_grid(

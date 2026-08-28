@@ -39,7 +39,7 @@ generated quantities {
   matrix[I-1, M] z_ind_raw;
   matrix[I, M] z_ind;
 
-  real mu;
+  real mu_group;
   real<lower=0> sigma_ind;
   vector[I-1] mu_raw_ind;
 
@@ -56,16 +56,7 @@ generated quantities {
   vector[M] diag_S_ind;
 
 
-  if (distributions[1] == 1) {
-    mu = normal_rng(params[1,1], params[1,2]);
-  } else if (distributions[1] == 2) {
-    mu = lognormal_rng(params[1,1], params[1,2]);
-  } else if (distributions[1] == 3) {
-    mu = cauchy_rng(params[1,1], params[1,2]);
-  } else if (distributions[1] == 4) {
-    mu = exponential_rng(params[1,1]);
-  }
-
+  mu_group = apply_prior_rng(distributions[1], params[1,1], params[1,2], -1);
   sigma_ind = apply_prior_rng(1, 0.5, 0.2, 0);
 
   for (i in 1:I-1) {
@@ -73,7 +64,7 @@ generated quantities {
   }
 
   vector[I] mu_raw_ind_std = Q_R * mu_raw_ind; //constrain_mu(I, 1, rep_array(1, I), mu_raw_ind, {I});
-  vector[I] mu_ind = mu + mu_raw_ind_std * sigma_ind;
+  vector[I] mu_ind = mu_group + mu_raw_ind_std * sigma_ind;
 
   alpha_group = apply_prior_rng(distributions[2], params[2, 1], params[2, 2],0);
   alpha_ind = apply_prior_rng(distributions[3], params[3, 1], params[3, 2], 0);

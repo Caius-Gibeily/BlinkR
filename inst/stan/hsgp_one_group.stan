@@ -86,7 +86,7 @@ parameters {
 
   // indect intercept
   //vector[I] mu;
-  real mu;
+  real mu_group;
   real<lower=0> sigma_ind;
   vector[I-1] mu_raw_ind;
   // renewal shape
@@ -103,7 +103,7 @@ parameters {
 transformed parameters {
 
   vector[I] mu_raw_ind_std = Q_R * mu_raw_ind; //mu_raw_ind_std = sum_to_zero_mu(I, 1, rep_array(1,I), mu_raw_ind, {I}); //mu_raw_ind_std = Q_R * mu_raw_ind;
-  vector[I] mu_ind = mu + mu_raw_ind_std * sigma_ind;
+  vector[I] mu_ind = mu_group + mu_raw_ind_std * sigma_ind;
 
   matrix[I,M] z_ind;
 
@@ -138,15 +138,7 @@ model {
   mu_raw_ind ~ std_normal();
   sigma_ind ~ normal(0.5,0.2);
 
-  if (distributions[1] == 1) {
-    mu ~ normal(params[1,1],params[1,2]);
-  } else if (distributions[1] == 2) {
-    mu ~ lognormal(params[1,1],params[1,2]);
-  } else if (distributions[1] == 3) {
-    mu ~ cauchy(params[1,1],params[1,2]);
-  } else if (distributions[1] == 4) {
-    mu ~ exponential(params[1,1]);
-  }
+  apply_prior_lp(mu_group, distributions[1], params[1, 1], params[1, 2]);
 
   apply_prior_lp(alpha_group, distributions[2], params[2, 1], params[2, 2]);
   apply_prior_lp(alpha_ind, distributions[3], params[3, 1], params[3, 2]);

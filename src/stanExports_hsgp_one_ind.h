@@ -29,20 +29,20 @@ using namespace stan::math;
 stan::math::profile_map profiles__;
 static constexpr std::array<const char*, 397> locations_array__ =
   {" (found before start of program)",
-  " (in 'string', line 428, column 2 to column 14)",
-  " (in 'string', line 429, column 2 to column 20)",
-  " (in 'string', line 430, column 2 to column 22)",
-  " (in 'string', line 432, column 2 to column 10)",
+  " (in 'string', line 428, column 2 to column 18)",
+  " (in 'string', line 429, column 2 to column 24)",
+  " (in 'string', line 430, column 2 to column 26)",
+  " (in 'string', line 432, column 2 to column 14)",
   " (in 'string', line 436, column 2 to column 39)",
   " (in 'string', line 437, column 2 to column 47)",
   " (in 'string', line 438, column 2 to column 67)",
-  " (in 'string', line 442, column 2 to column 19)",
-  " (in 'string', line 444, column 2 to column 31)",
-  " (in 'string', line 443, column 2 to column 45)",
-  " (in 'string', line 448, column 2 to column 19)",
-  " (in 'string', line 449, column 2 to column 67)",
-  " (in 'string', line 450, column 2 to column 70)",
-  " (in 'string', line 451, column 2 to column 68)",
+  " (in 'string', line 442, column 2 to column 23)",
+  " (in 'string', line 444, column 2 to column 43)",
+  " (in 'string', line 443, column 2 to column 57)",
+  " (in 'string', line 448, column 2 to column 23)",
+  " (in 'string', line 449, column 2 to column 71)",
+  " (in 'string', line 450, column 2 to column 74)",
+  " (in 'string', line 451, column 2 to column 72)",
   " (in 'string', line 452, column 22 to line 453, column 48)",
   " (in 'string', line 452, column 2 to line 453, column 48)",
   " (in 'string', line 454, column 26 to line 455, column 56)",
@@ -52,8 +52,8 @@ static constexpr std::array<const char*, 397> locations_array__ =
   " (in 'string', line 458, column 18 to column 25)",
   " (in 'string', line 458, column 2 to column 36)",
   " (in 'string', line 460, column 11 to column 18)",
-  " (in 'string', line 460, column 4 to column 43)",
-  " (in 'string', line 461, column 4 to column 25)",
+  " (in 'string', line 460, column 4 to column 51)",
+  " (in 'string', line 461, column 4 to column 33)",
   " (in 'string', line 459, column 17 to line 462, column 3)",
   " (in 'string', line 459, column 2 to line 462, column 3)",
   " (in 'string', line 463, column 9 to column 16)",
@@ -2355,7 +2355,7 @@ public:
         }
       }
       current_statement__ = 82;
-      stan::math::validate_non_negative_index("z", "M", M);
+      stan::math::validate_non_negative_index("z_ind", "M", M);
       current_statement__ = 83;
       k_1dim__ = std::numeric_limits<int>::min();
       current_statement__ = 83;
@@ -2378,9 +2378,9 @@ public:
       stan::math::validate_non_negative_index("sigma_lognormal",
         "include_sigma_lognormal ? 1 : 0", sigma_lognormal_1dim__);
       current_statement__ = 86;
-      stan::math::validate_non_negative_index("diag_S", "M", M);
+      stan::math::validate_non_negative_index("diag_S_ind", "M", M);
       current_statement__ = 87;
-      stan::math::validate_non_negative_index("beta", "M", M);
+      stan::math::validate_non_negative_index("beta_ind", "M", M);
     } catch (const std::exception& e) {
       stan::lang::rethrow_located(e, locations_array__[current_statement__]);
     }
@@ -2414,21 +2414,21 @@ public:
     // suppress unused var warning
     (void) function__;
     try {
-      Eigen::Matrix<local_scalar_t__,-1,1> z =
+      Eigen::Matrix<local_scalar_t__,-1,1> z_ind =
         Eigen::Matrix<local_scalar_t__,-1,1>::Constant(M, DUMMY_VAR__);
       current_statement__ = 1;
-      z = in__.template read<Eigen::Matrix<local_scalar_t__,-1,1>>(M);
-      local_scalar_t__ rho = DUMMY_VAR__;
+      z_ind = in__.template read<Eigen::Matrix<local_scalar_t__,-1,1>>(M);
+      local_scalar_t__ rho_ind = DUMMY_VAR__;
       current_statement__ = 2;
-      rho = in__.template read_constrain_lb<local_scalar_t__, jacobian__>(0,
-              lp__);
-      local_scalar_t__ alpha = DUMMY_VAR__;
+      rho_ind = in__.template read_constrain_lb<local_scalar_t__,
+                  jacobian__>(0, lp__);
+      local_scalar_t__ alpha_ind = DUMMY_VAR__;
       current_statement__ = 3;
-      alpha = in__.template read_constrain_lb<local_scalar_t__,
-                jacobian__>(0, lp__);
-      local_scalar_t__ mu = DUMMY_VAR__;
+      alpha_ind = in__.template read_constrain_lb<local_scalar_t__,
+                    jacobian__>(0, lp__);
+      local_scalar_t__ mu_ind = DUMMY_VAR__;
       current_statement__ = 4;
-      mu = in__.template read<local_scalar_t__>();
+      mu_ind = in__.template read<local_scalar_t__>();
       Eigen::Matrix<local_scalar_t__,-1,1> k =
         Eigen::Matrix<local_scalar_t__,-1,1>::Constant(k_1dim__, DUMMY_VAR__);
       current_statement__ = 5;
@@ -2449,22 +2449,23 @@ public:
       sigma_lognormal = in__.template read_constrain_lb<
                           Eigen::Matrix<local_scalar_t__,-1,1>,
                           jacobian__>(0, lp__, sigma_lognormal_1dim__);
-      Eigen::Matrix<local_scalar_t__,-1,1> diag_S =
+      Eigen::Matrix<local_scalar_t__,-1,1> diag_S_ind =
         Eigen::Matrix<local_scalar_t__,-1,1>::Constant(M, DUMMY_VAR__);
       current_statement__ = 10;
-      stan::model::assign(diag_S,
-        get_diagSPD(alpha, rho, M, L, kernel, pstream__),
-        "assigning variable diag_S");
-      Eigen::Matrix<local_scalar_t__,-1,1> beta =
+      stan::model::assign(diag_S_ind,
+        get_diagSPD(alpha_ind, rho_ind, M, L, kernel, pstream__),
+        "assigning variable diag_S_ind");
+      Eigen::Matrix<local_scalar_t__,-1,1> beta_ind =
         Eigen::Matrix<local_scalar_t__,-1,1>::Constant(M, DUMMY_VAR__);
       current_statement__ = 9;
-      stan::model::assign(beta, stan::math::elt_multiply(diag_S, z),
-        "assigning variable beta");
+      stan::model::assign(beta_ind,
+        stan::math::elt_multiply(diag_S_ind, z_ind),
+        "assigning variable beta_ind");
       {
         current_statement__ = 11;
-        lp_accum__.add(stan::math::std_normal_lpdf<propto__>(z));
+        lp_accum__.add(stan::math::std_normal_lpdf<propto__>(z_ind));
         current_statement__ = 12;
-        apply_prior_lp<propto__>(mu,
+        apply_prior_lp<propto__>(mu_ind,
           stan::model::rvalue(distributions, "distributions",
             stan::model::index_uni(1)),
           stan::model::rvalue(params, "params", stan::model::index_uni(1),
@@ -2472,7 +2473,7 @@ public:
           stan::model::rvalue(params, "params", stan::model::index_uni(1),
             stan::model::index_uni(2)), lp__, lp_accum__, pstream__);
         current_statement__ = 13;
-        apply_prior_lp<propto__>(alpha,
+        apply_prior_lp<propto__>(alpha_ind,
           stan::model::rvalue(distributions, "distributions",
             stan::model::index_uni(2)),
           stan::model::rvalue(params, "params", stan::model::index_uni(2),
@@ -2480,7 +2481,7 @@ public:
           stan::model::rvalue(params, "params", stan::model::index_uni(2),
             stan::model::index_uni(2)), lp__, lp_accum__, pstream__);
         current_statement__ = 14;
-        apply_prior_lp<propto__>(rho,
+        apply_prior_lp<propto__>(rho_ind,
           stan::model::rvalue(distributions, "distributions",
             stan::model::index_uni(3)),
           stan::model::rvalue(params, "params", stan::model::index_uni(3),
@@ -2539,17 +2540,18 @@ public:
         current_statement__ = 27;
         for (int j = 1; j <= 3; ++j) {
           current_statement__ = 23;
-          stan::math::validate_non_negative_index("f", "N_total", N_total);
-          Eigen::Matrix<local_scalar_t__,-1,1> f =
+          stan::math::validate_non_negative_index("f_ind", "N_total", N_total);
+          Eigen::Matrix<local_scalar_t__,-1,1> f_ind =
             Eigen::Matrix<local_scalar_t__,-1,1>::Constant(N_total,
               DUMMY_VAR__);
           current_statement__ = 24;
-          stan::model::assign(f,
+          stan::model::assign(f_ind,
             stan::math::multiply(
               stan::model::rvalue(PHI_quad, "PHI_quad",
-                stan::model::index_uni(j)), beta), "assigning variable f");
+                stan::model::index_uni(j)), beta_ind),
+            "assigning variable f_ind");
           current_statement__ = 25;
-          stan::model::assign(eta_quad, stan::math::add(mu, f),
+          stan::model::assign(eta_quad, stan::math::add(mu_ind, f_ind),
             "assigning variable eta_quad", stan::model::index_uni(j));
         }
         current_statement__ = 28;
@@ -2651,22 +2653,22 @@ public:
     // suppress unused var warning
     (void) function__;
     try {
-      Eigen::Matrix<double,-1,1> z =
+      Eigen::Matrix<double,-1,1> z_ind =
         Eigen::Matrix<double,-1,1>::Constant(M,
           std::numeric_limits<double>::quiet_NaN());
       current_statement__ = 1;
-      z = in__.template read<Eigen::Matrix<local_scalar_t__,-1,1>>(M);
-      double rho = std::numeric_limits<double>::quiet_NaN();
+      z_ind = in__.template read<Eigen::Matrix<local_scalar_t__,-1,1>>(M);
+      double rho_ind = std::numeric_limits<double>::quiet_NaN();
       current_statement__ = 2;
-      rho = in__.template read_constrain_lb<local_scalar_t__, jacobian__>(0,
-              lp__);
-      double alpha = std::numeric_limits<double>::quiet_NaN();
+      rho_ind = in__.template read_constrain_lb<local_scalar_t__,
+                  jacobian__>(0, lp__);
+      double alpha_ind = std::numeric_limits<double>::quiet_NaN();
       current_statement__ = 3;
-      alpha = in__.template read_constrain_lb<local_scalar_t__,
-                jacobian__>(0, lp__);
-      double mu = std::numeric_limits<double>::quiet_NaN();
+      alpha_ind = in__.template read_constrain_lb<local_scalar_t__,
+                    jacobian__>(0, lp__);
+      double mu_ind = std::numeric_limits<double>::quiet_NaN();
       current_statement__ = 4;
-      mu = in__.template read<local_scalar_t__>();
+      mu_ind = in__.template read<local_scalar_t__>();
       Eigen::Matrix<double,-1,1> k =
         Eigen::Matrix<double,-1,1>::Constant(k_1dim__,
           std::numeric_limits<double>::quiet_NaN());
@@ -2688,16 +2690,16 @@ public:
       sigma_lognormal = in__.template read_constrain_lb<
                           Eigen::Matrix<local_scalar_t__,-1,1>,
                           jacobian__>(0, lp__, sigma_lognormal_1dim__);
-      Eigen::Matrix<double,-1,1> diag_S =
+      Eigen::Matrix<double,-1,1> diag_S_ind =
         Eigen::Matrix<double,-1,1>::Constant(M,
           std::numeric_limits<double>::quiet_NaN());
-      Eigen::Matrix<double,-1,1> beta =
+      Eigen::Matrix<double,-1,1> beta_ind =
         Eigen::Matrix<double,-1,1>::Constant(M,
           std::numeric_limits<double>::quiet_NaN());
-      out__.write(z);
-      out__.write(rho);
-      out__.write(alpha);
-      out__.write(mu);
+      out__.write(z_ind);
+      out__.write(rho_ind);
+      out__.write(alpha_ind);
+      out__.write(mu_ind);
       out__.write(k);
       out__.write(shape);
       out__.write(sigma_lognormal);
@@ -2707,15 +2709,16 @@ public:
         return ;
       }
       current_statement__ = 10;
-      stan::model::assign(diag_S,
-        get_diagSPD(alpha, rho, M, L, kernel, pstream__),
-        "assigning variable diag_S");
+      stan::model::assign(diag_S_ind,
+        get_diagSPD(alpha_ind, rho_ind, M, L, kernel, pstream__),
+        "assigning variable diag_S_ind");
       current_statement__ = 9;
-      stan::model::assign(beta, stan::math::elt_multiply(diag_S, z),
-        "assigning variable beta");
+      stan::model::assign(beta_ind,
+        stan::math::elt_multiply(diag_S_ind, z_ind),
+        "assigning variable beta_ind");
       if (emit_transformed_parameters__) {
-        out__.write(diag_S);
-        out__.write(beta);
+        out__.write(diag_S_ind);
+        out__.write(beta_ind);
       }
       if (stan::math::logical_negation(emit_generated_quantities__)) {
         return ;
@@ -2740,25 +2743,25 @@ public:
     try {
       int pos__ = std::numeric_limits<int>::min();
       pos__ = 1;
-      Eigen::Matrix<local_scalar_t__,-1,1> z =
+      Eigen::Matrix<local_scalar_t__,-1,1> z_ind =
         Eigen::Matrix<local_scalar_t__,-1,1>::Constant(M, DUMMY_VAR__);
       current_statement__ = 1;
-      stan::model::assign(z,
+      stan::model::assign(z_ind,
         in__.read<Eigen::Matrix<local_scalar_t__,-1,1>>(M),
-        "assigning variable z");
-      out__.write(z);
-      local_scalar_t__ rho = DUMMY_VAR__;
+        "assigning variable z_ind");
+      out__.write(z_ind);
+      local_scalar_t__ rho_ind = DUMMY_VAR__;
       current_statement__ = 2;
-      rho = in__.read<local_scalar_t__>();
-      out__.write_free_lb(0, rho);
-      local_scalar_t__ alpha = DUMMY_VAR__;
+      rho_ind = in__.read<local_scalar_t__>();
+      out__.write_free_lb(0, rho_ind);
+      local_scalar_t__ alpha_ind = DUMMY_VAR__;
       current_statement__ = 3;
-      alpha = in__.read<local_scalar_t__>();
-      out__.write_free_lb(0, alpha);
-      local_scalar_t__ mu = DUMMY_VAR__;
+      alpha_ind = in__.read<local_scalar_t__>();
+      out__.write_free_lb(0, alpha_ind);
+      local_scalar_t__ mu_ind = DUMMY_VAR__;
       current_statement__ = 4;
-      mu = in__.read<local_scalar_t__>();
-      out__.write(mu);
+      mu_ind = in__.read<local_scalar_t__>();
+      out__.write(mu_ind);
       Eigen::Matrix<local_scalar_t__,-1,1> k =
         Eigen::Matrix<local_scalar_t__,-1,1>::Constant(k_1dim__, DUMMY_VAR__);
       current_statement__ = 5;
@@ -2799,16 +2802,16 @@ public:
     (void) DUMMY_VAR__;
     try {
       current_statement__ = 1;
-      context__.validate_dims("parameter initialization", "z", "double",
+      context__.validate_dims("parameter initialization", "z_ind", "double",
         std::vector<size_t>{static_cast<size_t>(M)});
       current_statement__ = 2;
-      context__.validate_dims("parameter initialization", "rho", "double",
-        std::vector<size_t>{});
+      context__.validate_dims("parameter initialization", "rho_ind",
+        "double", std::vector<size_t>{});
       current_statement__ = 3;
-      context__.validate_dims("parameter initialization", "alpha", "double",
-        std::vector<size_t>{});
+      context__.validate_dims("parameter initialization", "alpha_ind",
+        "double", std::vector<size_t>{});
       current_statement__ = 4;
-      context__.validate_dims("parameter initialization", "mu", "double",
+      context__.validate_dims("parameter initialization", "mu_ind", "double",
         std::vector<size_t>{});
       current_statement__ = 5;
       context__.validate_dims("parameter initialization", "k", "double",
@@ -2822,36 +2825,36 @@ public:
         std::vector<size_t>{static_cast<size_t>(sigma_lognormal_1dim__)});
       int pos__ = std::numeric_limits<int>::min();
       pos__ = 1;
-      Eigen::Matrix<local_scalar_t__,-1,1> z =
+      Eigen::Matrix<local_scalar_t__,-1,1> z_ind =
         Eigen::Matrix<local_scalar_t__,-1,1>::Constant(M, DUMMY_VAR__);
       {
-        std::vector<local_scalar_t__> z_flat__;
+        std::vector<local_scalar_t__> z_ind_flat__;
         current_statement__ = 1;
-        z_flat__ = context__.vals_r("z");
+        z_ind_flat__ = context__.vals_r("z_ind");
         current_statement__ = 1;
         pos__ = 1;
         current_statement__ = 1;
         for (int sym1__ = 1; sym1__ <= M; ++sym1__) {
           current_statement__ = 1;
-          stan::model::assign(z, z_flat__[(pos__ - 1)],
-            "assigning variable z", stan::model::index_uni(sym1__));
+          stan::model::assign(z_ind, z_ind_flat__[(pos__ - 1)],
+            "assigning variable z_ind", stan::model::index_uni(sym1__));
           current_statement__ = 1;
           pos__ = (pos__ + 1);
         }
       }
-      out__.write(z);
-      local_scalar_t__ rho = DUMMY_VAR__;
+      out__.write(z_ind);
+      local_scalar_t__ rho_ind = DUMMY_VAR__;
       current_statement__ = 2;
-      rho = context__.vals_r("rho")[(1 - 1)];
-      out__.write_free_lb(0, rho);
-      local_scalar_t__ alpha = DUMMY_VAR__;
+      rho_ind = context__.vals_r("rho_ind")[(1 - 1)];
+      out__.write_free_lb(0, rho_ind);
+      local_scalar_t__ alpha_ind = DUMMY_VAR__;
       current_statement__ = 3;
-      alpha = context__.vals_r("alpha")[(1 - 1)];
-      out__.write_free_lb(0, alpha);
-      local_scalar_t__ mu = DUMMY_VAR__;
+      alpha_ind = context__.vals_r("alpha_ind")[(1 - 1)];
+      out__.write_free_lb(0, alpha_ind);
+      local_scalar_t__ mu_ind = DUMMY_VAR__;
       current_statement__ = 4;
-      mu = context__.vals_r("mu")[(1 - 1)];
-      out__.write(mu);
+      mu_ind = context__.vals_r("mu_ind")[(1 - 1)];
+      out__.write(mu_ind);
       Eigen::Matrix<local_scalar_t__,-1,1> k =
         Eigen::Matrix<local_scalar_t__,-1,1>::Constant(k_1dim__, DUMMY_VAR__);
       {
@@ -2917,10 +2920,10 @@ public:
   get_param_names(std::vector<std::string>& names__, const bool
                   emit_transformed_parameters__ = true, const bool
                   emit_generated_quantities__ = true) const {
-    names__ = std::vector<std::string>{"z", "rho", "alpha", "mu", "k",
-                "shape", "sigma_lognormal"};
+    names__ = std::vector<std::string>{"z_ind", "rho_ind", "alpha_ind",
+                "mu_ind", "k", "shape", "sigma_lognormal"};
     if (emit_transformed_parameters__) {
-      std::vector<std::string> temp{"diag_S", "beta"};
+      std::vector<std::string> temp{"diag_S_ind", "beta_ind"};
       names__.reserve(names__.size() + temp.size());
       names__.insert(names__.end(), temp.begin(), temp.end());
     }
@@ -2952,12 +2955,12 @@ public:
                           emit_transformed_parameters__ = true, bool
                           emit_generated_quantities__ = true) const final {
     for (int sym1__ = 1; sym1__ <= M; ++sym1__) {
-      param_names__.emplace_back(std::string() + "z" + '.' +
+      param_names__.emplace_back(std::string() + "z_ind" + '.' +
         std::to_string(sym1__));
     }
-    param_names__.emplace_back(std::string() + "rho");
-    param_names__.emplace_back(std::string() + "alpha");
-    param_names__.emplace_back(std::string() + "mu");
+    param_names__.emplace_back(std::string() + "rho_ind");
+    param_names__.emplace_back(std::string() + "alpha_ind");
+    param_names__.emplace_back(std::string() + "mu_ind");
     for (int sym1__ = 1; sym1__ <= k_1dim__; ++sym1__) {
       param_names__.emplace_back(std::string() + "k" + '.' +
         std::to_string(sym1__));
@@ -2972,11 +2975,11 @@ public:
     }
     if (emit_transformed_parameters__) {
       for (int sym1__ = 1; sym1__ <= M; ++sym1__) {
-        param_names__.emplace_back(std::string() + "diag_S" + '.' +
+        param_names__.emplace_back(std::string() + "diag_S_ind" + '.' +
           std::to_string(sym1__));
       }
       for (int sym1__ = 1; sym1__ <= M; ++sym1__) {
-        param_names__.emplace_back(std::string() + "beta" + '.' +
+        param_names__.emplace_back(std::string() + "beta_ind" + '.' +
           std::to_string(sym1__));
       }
     }
@@ -2987,12 +2990,12 @@ public:
                             emit_transformed_parameters__ = true, bool
                             emit_generated_quantities__ = true) const final {
     for (int sym1__ = 1; sym1__ <= M; ++sym1__) {
-      param_names__.emplace_back(std::string() + "z" + '.' +
+      param_names__.emplace_back(std::string() + "z_ind" + '.' +
         std::to_string(sym1__));
     }
-    param_names__.emplace_back(std::string() + "rho");
-    param_names__.emplace_back(std::string() + "alpha");
-    param_names__.emplace_back(std::string() + "mu");
+    param_names__.emplace_back(std::string() + "rho_ind");
+    param_names__.emplace_back(std::string() + "alpha_ind");
+    param_names__.emplace_back(std::string() + "mu_ind");
     for (int sym1__ = 1; sym1__ <= k_1dim__; ++sym1__) {
       param_names__.emplace_back(std::string() + "k" + '.' +
         std::to_string(sym1__));
@@ -3007,21 +3010,21 @@ public:
     }
     if (emit_transformed_parameters__) {
       for (int sym1__ = 1; sym1__ <= M; ++sym1__) {
-        param_names__.emplace_back(std::string() + "diag_S" + '.' +
+        param_names__.emplace_back(std::string() + "diag_S_ind" + '.' +
           std::to_string(sym1__));
       }
       for (int sym1__ = 1; sym1__ <= M; ++sym1__) {
-        param_names__.emplace_back(std::string() + "beta" + '.' +
+        param_names__.emplace_back(std::string() + "beta_ind" + '.' +
           std::to_string(sym1__));
       }
     }
     if (emit_generated_quantities__) {}
   }
   inline std::string get_constrained_sizedtypes() const {
-    return std::string("[{\"name\":\"z\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(M) + "},\"block\":\"parameters\"},{\"name\":\"rho\",\"type\":{\"name\":\"real\"},\"block\":\"parameters\"},{\"name\":\"alpha\",\"type\":{\"name\":\"real\"},\"block\":\"parameters\"},{\"name\":\"mu\",\"type\":{\"name\":\"real\"},\"block\":\"parameters\"},{\"name\":\"k\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(k_1dim__) + "},\"block\":\"parameters\"},{\"name\":\"shape\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(shape_1dim__) + "},\"block\":\"parameters\"},{\"name\":\"sigma_lognormal\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(sigma_lognormal_1dim__) + "},\"block\":\"parameters\"},{\"name\":\"diag_S\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(M) + "},\"block\":\"transformed_parameters\"},{\"name\":\"beta\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(M) + "},\"block\":\"transformed_parameters\"}]");
+    return std::string("[{\"name\":\"z_ind\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(M) + "},\"block\":\"parameters\"},{\"name\":\"rho_ind\",\"type\":{\"name\":\"real\"},\"block\":\"parameters\"},{\"name\":\"alpha_ind\",\"type\":{\"name\":\"real\"},\"block\":\"parameters\"},{\"name\":\"mu_ind\",\"type\":{\"name\":\"real\"},\"block\":\"parameters\"},{\"name\":\"k\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(k_1dim__) + "},\"block\":\"parameters\"},{\"name\":\"shape\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(shape_1dim__) + "},\"block\":\"parameters\"},{\"name\":\"sigma_lognormal\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(sigma_lognormal_1dim__) + "},\"block\":\"parameters\"},{\"name\":\"diag_S_ind\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(M) + "},\"block\":\"transformed_parameters\"},{\"name\":\"beta_ind\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(M) + "},\"block\":\"transformed_parameters\"}]");
   }
   inline std::string get_unconstrained_sizedtypes() const {
-    return std::string("[{\"name\":\"z\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(M) + "},\"block\":\"parameters\"},{\"name\":\"rho\",\"type\":{\"name\":\"real\"},\"block\":\"parameters\"},{\"name\":\"alpha\",\"type\":{\"name\":\"real\"},\"block\":\"parameters\"},{\"name\":\"mu\",\"type\":{\"name\":\"real\"},\"block\":\"parameters\"},{\"name\":\"k\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(k_1dim__) + "},\"block\":\"parameters\"},{\"name\":\"shape\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(shape_1dim__) + "},\"block\":\"parameters\"},{\"name\":\"sigma_lognormal\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(sigma_lognormal_1dim__) + "},\"block\":\"parameters\"},{\"name\":\"diag_S\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(M) + "},\"block\":\"transformed_parameters\"},{\"name\":\"beta\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(M) + "},\"block\":\"transformed_parameters\"}]");
+    return std::string("[{\"name\":\"z_ind\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(M) + "},\"block\":\"parameters\"},{\"name\":\"rho_ind\",\"type\":{\"name\":\"real\"},\"block\":\"parameters\"},{\"name\":\"alpha_ind\",\"type\":{\"name\":\"real\"},\"block\":\"parameters\"},{\"name\":\"mu_ind\",\"type\":{\"name\":\"real\"},\"block\":\"parameters\"},{\"name\":\"k\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(k_1dim__) + "},\"block\":\"parameters\"},{\"name\":\"shape\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(shape_1dim__) + "},\"block\":\"parameters\"},{\"name\":\"sigma_lognormal\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(sigma_lognormal_1dim__) + "},\"block\":\"parameters\"},{\"name\":\"diag_S_ind\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(M) + "},\"block\":\"transformed_parameters\"},{\"name\":\"beta_ind\",\"type\":{\"name\":\"vector\",\"length\":" + std::to_string(M) + "},\"block\":\"transformed_parameters\"}]");
   }
   // Begin method overload boilerplate
   template <typename RNG> inline void

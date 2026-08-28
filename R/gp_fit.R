@@ -22,7 +22,7 @@ gp_fit.data.frame <- function(events,...) {
 
 #' @export
 #' @method gp_fit list
-gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind",
+gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind",subset=NULL,
                        event_times = "event_times", dt = "dt",run = c("prior_pc","fit"),
 
                        M = 40, family = c("exponential","gamma","weibull","lognormal","gengamma"),
@@ -140,7 +140,8 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind"
     stan_runtime = list(chains = chains,
                         iter = iter, warmup = warmup,
                         adapt_delta = adapt_delta,
-                        max_treedepth = max_treedepth)
+                        max_treedepth = max_treedepth),
+    sim_parameters = event_data$sim_parameters
   )
 
   if ("prior_pc" %in% run & "fit" %in% run) {

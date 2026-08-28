@@ -52,15 +52,7 @@ generated quantities {
     z_ind[m] = std_normal_rng();
   }
 
-  if (distributions[1] == 1) {
-    mu_ind = normal_rng(params[1,1], params[1,2]);
-  } else if (distributions[1] == 2) {
-    mu_ind = lognormal_rng(params[1,1], params[1,2]);
-  } else if (distributions[1] == 3) {
-    mu_ind = cauchy_rng(params[1,1], params[1,2]);
-  } else if (distributions[1] == 4) {
-    mu_ind = exponential_rng(params[1,1]);
-  }
+  mu_ind = apply_prior_rng(distributions[1], params[1,1], params[1,2], -1);
 
   alpha_ind = apply_prior_rng(distributions[2], params[2, 1], params[2, 2], 0);
   rho_ind   = apply_prior_rng(distributions[3], params[3, 1], params[3, 2], 0);
@@ -78,5 +70,5 @@ generated quantities {
   diag_S_ind = get_diagSPD(alpha_ind, rho_ind, M, L, kernel);
 
 
-  vector[M] beta = diag_S_ind .* z_ind;
+  vector[M] beta_ind = diag_S_ind .* z_ind;
 }

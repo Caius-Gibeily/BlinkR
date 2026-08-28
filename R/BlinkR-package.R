@@ -7,9 +7,9 @@
 #' @useDynLib BlinkR, .registration = TRUE
 #' @import methods
 #' @import Rcpp
-#' @import rstan
 #' @import dplyr
 #' @import tidyr
+#' @import rstan
 #' @import purrr
 #' @import rkriging
 #' @import tibble

@@ -67,12 +67,12 @@ transformed data {
 parameters {
 
   // population GP
-  vector[M] z;
-  real<lower=0> rho;
-  real<lower=0> alpha;
+  vector[M] z_ind;
+  real<lower=0> rho_ind;
+  real<lower=0> alpha_ind;
 
   // subject intercept
-  real mu;
+  real mu_ind;
 
   // renewal shape
   //real log_k_minus1;
@@ -89,22 +89,22 @@ transformed parameters {
 
 
   //real k = 1.0 + exp(log_k_minus1);
-  vector[M] diag_S;
+  vector[M] diag_S_ind;
 
-  diag_S = get_diagSPD(alpha,rho,M,L,kernel);
+  diag_S_ind = get_diagSPD(alpha_ind,rho_ind,M,L,kernel);
 
-  vector[M] beta = diag_S .* z;
+  vector[M] beta_ind = diag_S_ind .* z_ind;
 
 }
 
 model {
 
   // Priors
-  z ~ std_normal();
+  z_ind ~ std_normal();
 
-  apply_prior_lp(mu, distributions[1], params[1, 1], params[1, 2]);
-  apply_prior_lp(alpha, distributions[2], params[2, 1], params[2, 2]);
-  apply_prior_lp(rho, distributions[3], params[3, 1], params[3, 2]);
+  apply_prior_lp(mu_ind, distributions[1], params[1, 1], params[1, 2]);
+  apply_prior_lp(alpha_ind, distributions[2], params[2, 1], params[2, 2]);
+  apply_prior_lp(rho_ind, distributions[3], params[3, 1], params[3, 2]);
 
   if (include_k != 0) apply_prior_lp(k[1], distributions[include_k],
     params[include_k, 1], params[include_k, 2]);
@@ -117,9 +117,9 @@ model {
 
   for (j in 1:3) {
 
-    vector[N_total] f = PHI_quad[j] * beta;
+    vector[N_total] f_ind = PHI_quad[j] * beta_ind;
 
-    eta_quad[j] = mu + f;
+    eta_quad[j] = mu_ind + f_ind;
   }
 
   matrix[N_total, 3] log_kernel;

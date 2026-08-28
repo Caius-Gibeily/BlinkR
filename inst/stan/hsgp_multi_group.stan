@@ -97,7 +97,7 @@ parameters {
   // indect intercept
   //vector[G] mu_group;
   //vector[I] mu_ind;
-  real mu;
+  real mu_global;
   real<lower=0> sigma_group;
   real<lower=0> sigma_ind;
 
@@ -118,7 +118,7 @@ transformed parameters {
 
   // zero-constrained group mu intercepts
   vector[G] mu_raw_group_std = Q_R * mu_raw_group; //sum_to_zero_mu(G, 1, rep_array(1,G), mu_raw_group, {G});
-  vector[G] mu_group = mu + sigma_group * mu_raw_group_std;
+  vector[G] mu_group = mu_global + sigma_group * mu_raw_group_std;
 
   // zero-constrained individual mu intercepts
   vector[I] mu_raw_ind_std = constrain_mu(I, G, g_membership, mu_raw_ind, I_per_group);
@@ -168,15 +168,7 @@ model {
   sigma_group ~ normal(0.5,0.2);
   sigma_ind ~ normal(0.5,0.2);
 
-  if (distributions[1] == 1) {
-    mu ~ normal(params[1,1],params[1,2]);
-  } else if (distributions[1] == 2) {
-    mu ~ lognormal(params[1,1],params[1,2]);
-  } else if (distributions[1] == 3) {
-    mu ~ cauchy(params[1,1],params[1,2]);
-  } else if (distributions[1] == 4) {
-    mu ~ exponential(params[1,1]);
-  }
+  apply_prior_lp(mu_global, distributions[1], params[1, 1], params[1, 2]);
 
   apply_prior_lp(alpha_global, distributions[2], params[2, 1], params[2, 2]);
   apply_prior_lp(alpha_group, distributions[3], params[3, 1], params[3, 2]);

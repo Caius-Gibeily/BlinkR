@@ -9,8 +9,6 @@ simulate_events(
   group = group,
   ind = ind,
   family = c("exponential", "gamma", "weibull", "log-normal", "gengamma"),
-  scale = NULL,
-  mu = NULL,
   shape = 1,
   k = 2,
   sigma = 1,
@@ -26,10 +24,6 @@ simulate_events(
 
 \item{family}{Character vector. Choice of survival family from which to draw renewal events. Exponential, gamma, log-normal and generalised gamma are supported.}
 
-\item{scale}{Equal to the inverse of rate. The scale is the time-varying}
-
-\item{mu}{Location parameter of the log-normal and generalised gamma families. It is an alternative parameterisation of the generalised gamma family relative to the Stacey (1962) shape, k and scale parameters.}
-
 \item{shape}{Weibull shape parameter. When shape = 1 and k != 1, the distribution becomes a gamma distribution.}
 
 \item{k}{Numeric. Group-level coefficient standard deviation.}
@@ -43,6 +37,10 @@ simulate_events(
 \item{lerp}{Numeric. Mean coefficients for the spline basis.}
 
 \item{traces}{Tibble or Data.Frame object. A dataframe with columns containing group and individual id and their simulated latent trajectory.}
+
+\item{scale}{Equal to the inverse of rate. The scale is the time-varying}
+
+\item{mu}{Location parameter of the log-normal and generalised gamma families. It is an alternative parameterisation of the generalised gamma family relative to the Stacey (1962) shape, k and scale parameters.}
 
 \item{baseline_sd}{Numeric. Individual-level coefficient standard deviation.}
 }

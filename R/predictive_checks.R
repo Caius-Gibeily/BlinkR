@@ -1,26 +1,27 @@
 #' @export
-plot_posterior_pc <- function(model, n_samples = 1000, palette = "Blues",
-                              .width = c(0.5,0.8,0.99), bw_kde = 0.5, bw_rate = 5, scale_factor = 1, gridsize = 500) {
-  ppc_events <- ppc_draw_events(model,n_samples = n_samples)
+ppc_plot_all <- function(model, n_samples = 1000, palette = "Blues",prior=FALSE,
+                              .width = c(0.5,0.8,0.99), bw_kde = 0.5, bw_rate = 5, scale_factor = 1, gridsize = 500,...) {
+  ppc_events <- ppc_draw_events(model,n_samples = n_samples,prior=prior)
 
   if (!("gp_model") %in% class(model)) stop("Please use a fitted renewr model")
 
   # Global blink rate
-  p1 <- ppc_get_eventrate(model = model,scale_factor=scale_factor)
+  p1 <- ppc_get_eventrate(model = model,
+                          scale_factor=scale_factor,...)
   # Interevent distribution
   p2 <- ppc_get_interevent_dist(ppc_events = ppc_events,
-                                    model = model)
+                                    model = model,...)
   # Instantaneous blink rate
   p3 <- ppc_get_inst_eventrate(ppc_events = ppc_events,
-                                   model = model)
+                                   model = model,...)
 
   .ggplot_successive(p1,p2,p3)
 }
 
 #' @export
-ppc_draw_events <- function(model, n_samples) {
+ppc_draw_events <- function(model, n_samples, prior = FALSE) {
 
-  post_data <- ppc_draw_traces(model, n_samples = n_samples)
+  post_data <- ppc_draw_traces(model, n_samples = n_samples, prior = prior)
   samples <- post_data$sampled_traces
   params <- post_data$survival_params
 
@@ -49,9 +50,10 @@ ppc_draw_events <- function(model, n_samples) {
 }
 
 #' @export
-ppc_get_eventrate <- function(model,ppc_events=NULL,scale_factor=1,.width=c(0.5,0.8,0.99),palette = "Purples",return_plot=TRUE, n_samples=1000) {
+ppc_get_eventrate <- function(model,ppc_events=NULL,scale_factor=1,.width=c(0.5,0.8,0.99),
+                              palette = "Purples",return_plot=TRUE, n_samples=1000, prior = FALSE) {
   if (is.null(ppc_events)) {
-    ppc_events <- ppc_draw_events(model,n_samples = n_samples)
+    ppc_events <- ppc_draw_events(model,n_samples = n_samples, prior = prior)
   }
 
   br_global <- model$events |>
@@ -89,11 +91,12 @@ ppc_get_eventrate <- function(model,ppc_events=NULL,scale_factor=1,.width=c(0.5,
 }
 
 #' @export
-ppc_get_interevent_dist <- function(model, ppc_events = NULL, n_samples = 1000, .width=c(0.5,0.8,0.99), bw_kde = 1.2, return_plot = TRUE) {
+ppc_get_interevent_dist <- function(model, ppc_events = NULL, n_samples = 1000,
+                                    .width=c(0.5,0.8,0.99), bw_kde = 1.2, return_plot = TRUE, prior = FALSE) {
   if (is.null(ppc_events) & is.null(model)) {
     stop("Please provide either posterior generated events or a fitted Renewr model")
   } else if (is.null(ppc_events)) {
-    ppc_events <- ppc_draw_events(model,n_samples = n_samples)
+    ppc_events <- ppc_draw_events(model,n_samples = n_samples, prior = prior)
   }
 
   dt_high <- stats::quantile(ppc_events$dt, 0.99)
@@ -129,13 +132,15 @@ ppc_get_interevent_dist <- function(model, ppc_events = NULL, n_samples = 1000, 
 }
 
 #' @export
-ppc_get_inst_eventrate <- function(ppc_events = NULL,model,
-                                       bw_rate = 5,gridsize = 500, n_samples = 1000, .width = c(0.5,0.8,0.99), return_plot = TRUE, palette = "Purples",show_events=TRUE) {
+ppc_get_inst_eventrate <- function(model,ppc_events = NULL,
+                                       bw_rate = 5,gridsize = 500, n_samples = 1000,
+                                   .width = c(0.5,0.8,0.99), return_plot = TRUE,
+                                   palette = "Purples",show_events=TRUE, prior = FALSE) {
 
   if (is.null(ppc_events) & is.null(model)) {
     stop("Please provide either posterior generated events or a fitted Renewr model")
   } else if (is.null(ppc_events)) {
-    ppc_events <- ppc_draw_events(model,n_samples = n_samples)
+    ppc_events <- ppc_draw_events(model,n_samples = n_samples, prior = prior)
   }
 
   time_grid <- seq(0,model$settings$duration,

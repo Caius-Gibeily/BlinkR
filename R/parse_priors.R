@@ -23,7 +23,7 @@ parse_priors.one_ind <- function(model_setup) {
 #' @export
 #' @method parse_priors one_group
 parse_priors.one_group <- function(model_setup) {
-  valid_variables = c("mu","alpha_group",
+  valid_variables = c("mu_group","alpha_group",
                       "alpha_ind", "rho_group","rho_ind") %>%
     append(.get_family_priors(model_setup$settings$family))
 
@@ -38,7 +38,7 @@ parse_priors.one_group <- function(model_setup) {
 #' @export
 #' @method parse_priors multi_group
 parse_priors.multi_group <- function(model_setup) {
-  valid_variables = c("mu","alpha_global",
+  valid_variables = c("mu_global","alpha_global",
                       "alpha_group","alpha_ind", "rho_global","rho_group","rho_ind") %>%
     append(.get_family_priors(model_setup$settings$family))
 

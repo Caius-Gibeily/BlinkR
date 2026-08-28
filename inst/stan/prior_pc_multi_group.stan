@@ -51,7 +51,7 @@ generated quantities {
   matrix[I, M] z_ind_raw;
   matrix[G, M] z_group;
   matrix[I, M] z_ind;
-  real mu;
+  real mu_global;
   real<lower=0> sigma_ind;
   real<lower=0> sigma_group;
   vector[G-1] mu_raw_group;
@@ -69,8 +69,6 @@ generated quantities {
   vector[M] diag_S_group;
   vector[M] diag_S_ind;
 
-  // --- OPTIMIZED HIERARCHICAL WEIGHT GENERATION ---
-  // Completely vectorized RNG eliminates loop overhead and fixes the row G bug
   z_global = to_vector(normal_rng(rep_vector(0.0, M), 1.0));
 
   for (g in 1:(G - 1)) {
@@ -85,15 +83,8 @@ generated quantities {
 
   z_ind = constrain_groups(G, I, M, g_membership, z_ind_raw, I_per_group);
 
-  if (distributions[1] == 1) {
-    mu = normal_rng(params[1,1], params[1,2]);
-  } else if (distributions[1] == 2) {
-    mu = lognormal_rng(params[1,1], params[1,2]);
-  } else if (distributions[1] == 3) {
-    mu = cauchy_rng(params[1,1], params[1,2]);
-  } else if (distributions[1] == 4) {
-    mu = exponential_rng(params[1,1]);
-  }
+
+  mu_global = apply_prior_rng(distributions[1], params[1,1], params[1,2], -1);
 
   alpha_global = apply_prior_rng(distributions[2], params[2, 1], params[2, 2], 0);
   alpha_group = apply_prior_rng(distributions[3], params[3, 1], params[3, 2], 0);
@@ -119,7 +110,7 @@ generated quantities {
 
   mu_raw_group = to_vector(normal_rng(rep_vector(0.0, G - 1), 1.0));
   vector[G] mu_raw_group_std = Q_R * mu_raw_group;
-  vector[G] mu_group = mu + sigma_group * mu_raw_group_std;
+  vector[G] mu_group = mu_global + sigma_group * mu_raw_group_std;
 
 
   mu_raw_ind = to_vector(normal_rng(rep_vector(0.0, I), 1.0));

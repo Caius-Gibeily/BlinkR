@@ -13,9 +13,6 @@
 plot.sim_traces <- function(sim_data, level = c("individual", "group", "global"),
                             facet = TRUE, separate_pages = FALSE, width = 0.1, height = 0.2, size = 10,...) {
 
-  if (!requireNamespace("ggplot2", quietly = TRUE)) {
-    stop("Package 'ggplot2' is required for plotting.")
-  }
   if (!requireNamespace("patchwork", quietly = TRUE)) {
     stop("Package 'patchwork' is required for stacking subplots.")
   }

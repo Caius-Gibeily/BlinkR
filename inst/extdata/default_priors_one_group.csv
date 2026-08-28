@@ -1,5 +1,5 @@
 ﻿prior_variable,distribution,param_1,param_2
-mu,normal,0,1
+mu_group,normal,0,1
 alpha_group,normal,0.4,0.5
 alpha_ind,normal,0.2,0.5
 rho_group,lognormal,5,0.8
