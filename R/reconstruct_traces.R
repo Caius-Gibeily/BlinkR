@@ -33,7 +33,7 @@ reconstruct_traces.one_ind <- function(model,.width=.width,
   } else if (prior & !is.null(model$prior_pc) | "gp_prior_pc" %in% class(model)) {
     post_data <- rstan::extract(model$prior_pc)
   } else if (prior & is.null(model$prior_pc)) {
-    stop("Please ensure your model has prior data. You may do so by running gp_fit(prior_pc=TRUE)")
+    stop("Please ensure your model has prior data. You may do so by setting run = 'prior_pc' or c('prior_pc','fit') in gp_fit()")
   }
   n_draws <- length(post_data$rho_group)
 
@@ -85,8 +85,9 @@ reconstruct_traces.one_group <- function(model,.width=c(0.5,0.8,0.99),
     post_data <- rstan::extract(model$fit)
   } else if (prior & !is.null(model$prior_pc) | "gp_prior_pc" %in% class(model)) {
     post_data <- rstan::extract(model$prior_pc)
-  } else if (prior & is.null(model$prior_pc)) stop("Please ensure your model has prior data. You may do so by running gp_fit(prior_pc=TRUE)")
-
+  } else if (prior & is.null(model$prior_pc)) {
+    stop("Please ensure your model has prior data. You may do so by setting run = 'prior_pc' or c('prior_pc','fit') in gp_fit()")
+  }
 
   n_draws <- length(post_data$rho_group)
 
@@ -146,8 +147,9 @@ reconstruct_traces.multi_group <- function(model,.width=c(0.5,0.8,0.99),
     post_data <- rstan::extract(model$fit)
   } else if (prior & !is.null(model$prior_pc) | "gp_prior_pc" %in% class(model)) {
     post_data <- rstan::extract(model$prior_pc)
-  } else if (prior & is.null(model$prior_pc)) stop("Please ensure your model has prior data. You may do so by running gp_fit(prior_pc=TRUE)")
-
+  } else if (prior & is.null(model$prior_pc)) {
+    stop("Please ensure your model has prior data. You may do so by setting run = 'prior_pc' or c('prior_pc','fit') in gp_fit()")
+  }
 
   n_draws <- length(post_data$rho_global)
 

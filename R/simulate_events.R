@@ -18,7 +18,7 @@
 #' @export
 simulate_events <- function(trace_data, group = group, ind = ind, family = c("exponential","gamma","weibull",
                                                  "log-normal","gengamma"),shape = 1, k = 2, sigma = 1,
-                            Q = 0, baseline = 0, lerp = 100) {
+                            Q = 0, baseline = 0, lerp = 100, seed = NULL) {
 
   # extract trace data from list if the object is already a list
   if (is.list(trace_data) & !is.data.frame(trace_data)) traces <- trace_data$traces
@@ -28,6 +28,21 @@ simulate_events <- function(trace_data, group = group, ind = ind, family = c("ex
     traces <- trace_data
     trace_data <- list(traces = traces)
   }
+
+  if (is.null(seed)) {
+    if (!is.null(trace_data$sim_parameters$seed_traces)) {
+      seed <- trace_data$sim_parameters$seed_traces
+      set.seed(seed)
+      warning("Setting seed to the one set in trace simulation. If this is unintended, please set seed in simulate_events().")
+    } else {
+      set.seed(seed)
+    }
+  } else {
+    set.seed(seed)
+  }
+
+  trace_data$sim_parameters$seed_events <- seed
+
   sim_struct <- trace_data$traces <- traces |>
     group_by({{group}},{{ind}}) |> group_keys()
   n_ind <- nrow(sim_struct)

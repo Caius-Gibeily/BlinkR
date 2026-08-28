@@ -12,7 +12,9 @@
 #' @export
 simulate_spline_trajectories <- function(duration = 100, n_ind = 10, n_groups = 1,
                                          df = 5, sd_group = 0.5, sd_ind = 0.25,
-                                         mu_coeffs = stats::rnorm(df, 0, 1)) {
+                                         mu_coeffs = stats::rnorm(df, 0, 1), seed = NULL) {
+  set.seed(seed)
+
   sim_struct <- .create_sim_struct(n_groups = n_groups, n_ind = n_ind)
   if (n_ind == 1) {
     alpha_global <- alpha_group <- 0
@@ -37,7 +39,7 @@ simulate_spline_trajectories <- function(duration = 100, n_ind = 10, n_groups = 
 
   args_list <- mget(names(formals()), sys.frame(sys.nframe()))
 
-  exclude <- c("ind_traces","group_traces","type","mu_coeffs")
+  exclude <- c("ind_traces","group_traces","type","mu_coeffs","seed")
   args_list <- args_list[!names(args_list) %in% exclude]
 
   sim_traces <- list(traces = ind_traces$traces,
@@ -47,6 +49,7 @@ simulate_spline_trajectories <- function(duration = 100, n_ind = 10, n_groups = 
                      ind_coeffs = ind_traces$coeffs,
                      type = type)
   sim_traces$sim_parameters <- args_list
+  sim_traces$sim_parameters$seed_traces <- seed
 
   class(sim_traces) <- c("sim_traces",class(sim_traces))
   return(sim_traces)
@@ -131,7 +134,9 @@ simulate_gp_trajectories <- function(duration = 100, n_groups = 1, n_ind = 10,
                                      alpha_global = 0.5, rho_global = duration / 2,
                                      alpha_group = 0.5, rho_group = duration / 2,
                                      alpha_ind = 0.25, rho_ind = duration / 2,
-                                     nu = 3/2, P = 1) {
+                                     nu = 3/2, P = 1, seed = NULL) {
+  set.seed(seed)
+
   sim_struct <- .create_sim_struct(n_groups = n_groups, n_ind = n_ind)
   if (n_ind == 1) {
     alpha_global <- alpha_group <- 0
@@ -182,6 +187,8 @@ simulate_gp_trajectories <- function(duration = 100, n_groups = 1, n_ind = 10,
                      global_trace = global_trace,
                      type=type)
   sim_traces$sim_parameters <- args_list
+  sim_traces$sim_parameters$seed_traces <- seed
+
   class(sim_traces) <- append("sim_traces",class(sim_traces))
   return(sim_traces)
 }
