@@ -16,7 +16,8 @@ simulate_gp_trajectories(
   alpha_ind = 0.25,
   rho_ind = duration/2,
   nu = 3/2,
-  P = 1
+  P = 1,
+  seed = NULL
 )
 }
 \arguments{

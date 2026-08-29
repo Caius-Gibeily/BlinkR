@@ -21,7 +21,7 @@ ppc_plot_all <- function(model, n_samples = 1000, palette = "Blues",prior=FALSE,
 #' @export
 ppc_draw_events <- function(model, n_samples, prior = FALSE) {
 
-  post_data <- ppc_draw_traces(model, n_samples = n_samples, prior = prior)
+  post_data <- draw_traces(model, n_samples = n_samples, prior = prior)
   samples <- post_data$sampled_traces
   params <- post_data$survival_params
 
@@ -133,7 +133,7 @@ ppc_get_interevent_dist <- function(model, ppc_events = NULL, n_samples = 1000,
 
 #' @export
 ppc_get_inst_eventrate <- function(model,ppc_events = NULL,
-                                       bw_rate = 5,gridsize = 500, n_samples = 1000,
+                                       bw_rate = 8,gridsize = 500, n_samples = 1000,
                                    .width = c(0.5,0.8,0.99), return_plot = TRUE,
                                    palette = "Purples",show_events=TRUE, prior = FALSE) {
 

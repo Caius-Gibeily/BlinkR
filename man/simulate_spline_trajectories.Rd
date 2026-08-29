@@ -11,7 +11,8 @@ simulate_spline_trajectories(
   df = 5,
   sd_group = 0.5,
   sd_ind = 0.25,
-  mu_coeffs = stats::rnorm(df, 0, 1)
+  mu_coeffs = stats::rnorm(df, 0, 1),
+  seed = NULL
 )
 }
 \arguments{

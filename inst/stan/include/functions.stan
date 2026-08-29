@@ -256,16 +256,21 @@ void apply_prior_lp(real param, real dist, real arg1, real arg2) {
 
 real apply_prior_rng(real dist, real arg1, real arg2, int apply_floor) {
   real param = -1;
-  real floor_value;
-  if (apply_floor == 1) {
-    floor_value = 1;
-  } else if (apply_floor == 0) {
-    floor_value = 0;
-  } else {
-    floor_value = negative_infinity();
-  }
 
-  while (param < floor_value) {
+  if (apply_floor == 1 || apply_floor == 0) {
+    real floor_value = (apply_floor == 1) ? 1.0 : 0.0;
+    while (param < floor_value) {
+      if (dist == 1) {
+        param = normal_rng(arg1, arg2);
+      } else if (dist == 2) {
+        param = lognormal_rng(arg1, arg2);
+      } else if (dist == 3) {
+        param = cauchy_rng(arg1, arg2);
+      } else if (dist == 4) {
+        param = exponential_rng(arg1);
+      }
+    }
+  } else {
     if (dist == 1) {
       param = normal_rng(arg1, arg2);
     } else if (dist == 2) {
@@ -276,6 +281,7 @@ real apply_prior_rng(real dist, real arg1, real arg2, int apply_floor) {
       param = exponential_rng(arg1);
     }
   }
+
   return param;
 }
 

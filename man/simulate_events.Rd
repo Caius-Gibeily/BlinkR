@@ -14,7 +14,8 @@ simulate_events(
   sigma = 1,
   Q = 0,
   baseline = 0,
-  lerp = 100
+  lerp = 100,
+  seed = NULL
 )
 }
 \arguments{

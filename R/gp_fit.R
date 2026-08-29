@@ -161,15 +161,15 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind"
 gp_fit.gp_model <- function(model_data, ...) {
 
   if ("one_ind" %in% class(model_data)) {
-    message("Fitting a single-individual Stan model")
+    message("Fitting a single-individual GP model")
     prior_frame <- parse_priors.one_ind(model_data)
     stan_obj <- stanmodels$hsgp_one_ind
   } else if ("one_group" %in% class(model_data)) {
-    message("Fitting a single-group hierarchical Stan model")
+    message("Fitting a single-group hierarchical GP model")
     prior_frame <- parse_priors.one_group(model_data)
     stan_obj <- stanmodels$hsgp_one_group
   } else if ("multi_group" %in% class(model_data)) {
-    message("Fitting a multi-group hierarchical Stan model")
+    message("Fitting a multi-group hierarchical GP model")
     prior_frame <- parse_priors.multi_group(model_data)
     stan_obj <- stanmodels$hsgp_multi_group
   }

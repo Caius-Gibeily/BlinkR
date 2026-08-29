@@ -42,6 +42,7 @@ simulate_events <- function(trace_data, group = group, ind = ind, family = c("ex
   }
 
   trace_data$sim_parameters$seed_events <- seed
+  trace_data$sim_parameters$family <- family
 
   sim_struct <- trace_data$traces <- traces |>
     group_by({{group}},{{ind}}) |> group_keys()
@@ -177,7 +178,8 @@ simulate_events <- function(trace_data, group = group, ind = ind, family = c("ex
     events <- simulate_renewal(time,modulant,sigma,Q)
   }
   renewal_events <- tibble(event_times = events,
-                        dt = diff(c(0,events)))
+                        dt = diff(c(0,events))) |>
+    dplyr::filter(event_times > 0)
   return(renewal_events)
 }
 #

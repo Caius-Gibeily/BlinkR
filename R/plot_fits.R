@@ -1,10 +1,10 @@
 
 #' @export
 #' @method plot gp_model
-plot.gp_model <- function(model, level = c("ind", "group", "global"), .width= c(0.50,0.8,0.99),sample_traces = 0, prior=FALSE,
+plot.gp_model <- function(model, level = c("ind", "group", "global"), .width= c(0.50,0.8,0.99),n_samples = 0, prior=FALSE,
                           show_ci = TRUE, facet = show_ci, show_events = TRUE, dev_only = FALSE,collapse_level = FALSE,
                           show_traces = TRUE, palette = "Purples", width = 0.1, height = 0.2, size = 10,
-                          sample_alpha = 0.6, sample_colour = "darkgrey", sample_linewidth = 0.9, ...) {
+                          sample_alpha = 0.6, sample_colour = "darkgrey", sample_linewidth = 0.9, rescale = FALSE,...) {
 
 
   level <- match.arg(level)
@@ -14,24 +14,39 @@ plot.gp_model <- function(model, level = c("ind", "group", "global"), .width= c(
     stop("Global trace not present for models with one individual or group.")
   }
 
-  tidy_model <- reconstruct_traces(model,level=level,.width=.width,dev_only=dev_only,from_prior=prior,...)
-  if (sample_traces > 0) {
+  #tidy_model <- reconstruct_traces(model,level=level,.width=.width,dev_only=dev_only,from_prior=prior,...)
+  tidy_model <- tidy_traces(model,level=level,
+                            .width=.width,dev_only=dev_only,prior=prior, rescale = rescale)
+
+  if (rescale) {
+    scale_factor <- switch(model$sim_parameters$family,
+                           "exponential" = 1,
+                           "gamma" = model$sim_parameters$`k[1]`,
+                           "weibull" = gamma(1 + (1/model$sim_parameters$`shape[1]`)),
+                           "gengamma" =  gamma((model$sim_parameters$`shape[1]`+1)/model$sim_parameters$`k[1]`)/
+                             gamma(model$sim_parameters$`shape[1]`/model$sim_parameters$`k[1]`))
+  } else scale_factor <- 1
+
+
+  if (n_samples > 0) {
 
     max_samples <- model$stan_runtime$chains *
       (model$stan_runtime$iter - model$stan_runtime$warmup)
 
-    if (sample_traces > max_samples) {
+    if (n_samples > max_samples) {
       stop("Please choose a number of samples less than the total number of non-warmup iterations across all chains")
     }
 
-    traces_sampled <- ppc_draw_traces(model, level = level,
-                                     n_samples = sample_traces, from_prior=prior)
+    traces_sampled <- draw_traces(model, level = level,
+                                  n_samples = n_samples, prior=prior, rescale = rescale)
   }
 
   y_elements <- c(tidy_model$y)
-  if (show_ci) y_elements <- c(y_elements, tidy_model$ymin, tidy_model$ymax)
-  if (show_traces && !is.null(model$traces)) y_elements <- c(y_elements, model$traces$y)
-  global_y <- range(y_elements)
+
+  #if (show_ci && !is.null(model$traces)) y_elements <- c(tidy_model$ymin, tidy_model$ymax)
+  #if (show_traces && !is.null(model$traces)) y_elements <- c(y_elements, model$traces$y_offset)
+  #global_y <- quantile(y_elements + log(scale_factor),c(0.05,0.95))
+
   global_x <- c(0,model$settings$duration)
 
   facet_var <- level
@@ -40,8 +55,8 @@ plot.gp_model <- function(model, level = c("ind", "group", "global"), .width= c(
   build_base_plot <- function(fit_sub, trace_sub = NULL, ev_sub = NULL, sample_sub = NULL) {
 
     p <- ggplot2::ggplot() +
-      ggplot2::coord_cartesian(xlim = global_x,
-                               ylim = global_y) +
+      #ggplot2::coord_cartesian(xlim = global_x,
+      #                         ylim = global_y) +
       ggplot2::theme_minimal() +
       ggplot2::labs(x = "Time (t)", y = "Value")
 
@@ -52,7 +67,7 @@ plot.gp_model <- function(model, level = c("ind", "group", "global"), .width= c(
                      fill = factor(.width), group = .data[[group_aes]]),
         alpha = 0.6, linewidth = 0.5
       ) +
-        ggplot2::scale_fill_brewer(palette = palette, direction = -1, name = "CI Width")
+        ggplot2::scale_fill_brewer(palette = palette, direction = -1, name = "CrI Width")
     } else if (!is.null(fit_sub) && nrow(fit_sub) > 0) {
       p <- p + ggplot2::geom_line(
         data = fit_sub,
@@ -64,12 +79,12 @@ plot.gp_model <- function(model, level = c("ind", "group", "global"), .width= c(
     if (show_traces && !is.null(trace_sub) && nrow(trace_sub) > 0) {
       p <- p + ggplot2::geom_line(
         data = trace_sub,
-        ggplot2::aes(x = x, y = y_offset, group = .data[[facet_var]]),
+        ggplot2::aes(x = x, y = y_offset + log(scale_factor), group = .data[[facet_var]]),
         inherit.aes = FALSE, linewidth = 0.7, color = "black", alpha = 0.5
       )
     }
 
-    if (sample_traces > 0 && !is.null(sample_sub) && nrow(sample_sub) > 0) {
+    if (n_samples > 0 && !is.null(sample_sub) && nrow(sample_sub) > 0) {
       p <- p + ggplot2::geom_line(data = sample_sub,
                                   ggplot2::aes(x = x, y = y,
                                                group = interaction(sample,.data[[facet_var]])),
@@ -107,7 +122,10 @@ plot.gp_model <- function(model, level = c("ind", "group", "global"), .width= c(
       }
 
       return((p / p_below) + patchwork::plot_layout(heights = c(3, 1)))
+    } else {
+      return(p)
     }
+
 
   }
 
@@ -117,7 +135,7 @@ plot.gp_model <- function(model, level = c("ind", "group", "global"), .width= c(
   else trace_data <- NULL
 
   event_data <- if (!is.null(model$events)) model$events else NULL
-  sample_data <- if (sample_traces > 0) traces_sampled$sampled_traces else NULL
+  sample_data <- if (n_samples > 0) traces_sampled$sampled_traces else NULL
 
 
   if (!facet || level == "global") {

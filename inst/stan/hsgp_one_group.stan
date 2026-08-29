@@ -9,7 +9,7 @@ data {
   int<lower=1> N_params;
   array[N_params,2] real params;
   vector[N_params] distributions;
-  int<lower=1, upper=4> kernel;
+  int<lower=1, upper=5> kernel;
   int<lower=1, upper=5> family;
 
   real<lower=0> L_factor;

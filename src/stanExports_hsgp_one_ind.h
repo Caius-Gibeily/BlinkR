@@ -2156,7 +2156,7 @@ public:
       current_statement__ = 49;
       stan::math::check_greater_or_equal(function__, "kernel", kernel, 1);
       current_statement__ = 49;
-      stan::math::check_less_or_equal(function__, "kernel", kernel, 4);
+      stan::math::check_less_or_equal(function__, "kernel", kernel, 5);
       current_statement__ = 50;
       context__.validate_dims("data initialization", "family", "int",
         std::vector<size_t>{});
