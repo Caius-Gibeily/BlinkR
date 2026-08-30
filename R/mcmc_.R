@@ -1,5 +1,22 @@
 
+
+#' Title
+#'
+#' @param model
+#' @param pars
+#' @param prior
+#' @param type
+#' @param scheme
+#' @param show_ground
+#' @param height
+#' @param linewidth
+#' @param color
+#' @param ...
+#'
+#' @returns
 #' @export
+#'
+#' @examples
 mcmc_plot <- function(model,pars=NULL,prior=FALSE,
                                type = c("areas", "dens", "dens_chains", "hist", "intervals", "trace"),
                       scheme="blue",show_ground = TRUE,height=0.3, linewidth=1,color="black",...) {

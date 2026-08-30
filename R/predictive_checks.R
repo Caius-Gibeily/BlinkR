@@ -1,3 +1,15 @@
+#' @param model
+#'
+#' @param n_samples
+#' @param palette
+#' @param prior
+#' @param .width
+#' @param bw_kde
+#' @param bw_rate
+#' @param scale_factor
+#' @param gridsize
+#' @param ...
+#'
 #' @export
 ppc_plot_all <- function(model, n_samples = 1000, palette = "Blues",prior=FALSE,
                               .width = c(0.5,0.8,0.99), bw_kde = 0.5, bw_rate = 5, scale_factor = 1, gridsize = 500,...) {
@@ -49,6 +61,16 @@ ppc_draw_events <- function(model, n_samples, prior = FALSE) {
   return(ppc_events)
 }
 
+#' @param model
+#'
+#' @param ppc_events
+#' @param scale_factor
+#' @param .width
+#' @param palette
+#' @param return_plot
+#' @param n_samples
+#' @param prior
+#'
 #' @export
 ppc_get_eventrate <- function(model,ppc_events=NULL,scale_factor=1,.width=c(0.5,0.8,0.99),
                               palette = "Purples",return_plot=TRUE, n_samples=1000, prior = FALSE) {
@@ -90,6 +112,15 @@ ppc_get_eventrate <- function(model,ppc_events=NULL,scale_factor=1,.width=c(0.5,
   }
 }
 
+#' @param model
+#'
+#' @param ppc_events
+#' @param n_samples
+#' @param .width
+#' @param bw_kde
+#' @param return_plot
+#' @param prior
+#'
 #' @export
 ppc_get_interevent_dist <- function(model, ppc_events = NULL, n_samples = 1000,
                                     .width=c(0.5,0.8,0.99), bw_kde = 1.2, return_plot = TRUE, prior = FALSE) {
@@ -131,6 +162,18 @@ ppc_get_interevent_dist <- function(model, ppc_events = NULL, n_samples = 1000,
   }
 }
 
+#' @param model
+#'
+#' @param ppc_events
+#' @param bw_rate
+#' @param gridsize
+#' @param n_samples
+#' @param .width
+#' @param return_plot
+#' @param palette
+#' @param show_events
+#' @param prior
+#'
 #' @export
 ppc_get_inst_eventrate <- function(model,ppc_events = NULL,
                                        bw_rate = 8,gridsize = 500, n_samples = 1000,

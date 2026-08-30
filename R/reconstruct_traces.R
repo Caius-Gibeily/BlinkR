@@ -7,6 +7,13 @@
 # prior predictive checks: copies of each stan script but only with generated quantities
 # option to select sample trajectories, event rasters/heatmaps, event rates and interevent distributions
 
+#' @param model
+#'
+#' @param level
+#' @param prior
+#' @param dev_only
+#' @param resolution
+#'
 #' @export
 reconstruct_traces <- function(model, level = c("ind","group","global"), prior = FALSE, dev_only = FALSE, resolution = 0.1) {
   if (dev_only && "one_ind" %in% class(model)) {
@@ -75,7 +82,11 @@ reconstruct_traces <- function(model, level = c("ind","group","global"), prior =
 
   beta_ind <- post_data$beta_ind
   if (length(dim(beta_ind)) == 2) {
-    beta_ind <- t(beta_ind) |> .add_dim()
+    if ("one_ind" %in% class(model)) {
+      beta_ind <- beta_ind |> .add_dim()
+    } else {
+      beta_ind <- t(beta_ind) |> .add_dim()
+    }
   }
 
   beta_ind <- beta_ind |> as.tensor()
@@ -84,6 +95,7 @@ reconstruct_traces <- function(model, level = c("ind","group","global"), prior =
 
   #> sweep(MARGIN = c(1,2),
   #          STATS = mu_group, FUN = "+")
+
   f_ind <- ttm(beta_ind,phi_basis,3) |> sweep(MARGIN = c(1,2),
                                               STATS = mu_ind, FUN = "+")
 
@@ -118,55 +130,71 @@ reconstruct_traces <- function(model, level = c("ind","group","global"), prior =
       f_group_ind <- f_ind |> sweep(MARGIN = c(1,3),
                                     STATS = f_group@data, FUN = "+")
     }
+
+
+    if (level == "ind") {
+      if (!dev_only) gp_dat <- f_group_ind@data
+      else gp_dat <- f_ind@data
+      recon_data$gp_dat <- gp_dat
+
+      return(recon_data)
+      #tidy_quants <- .tidy_quantiles(gp_dat,t_grid,I,g_membership,n_grid,level=level,.width = .width)
+    } else if (level == "group") {
+
+
+      if (!dev_only) {
+        if ("one_group" %in% class(model)) {
+          f_group <- f_group |> sweep(MARGIN = 1,STATS = mu_group, FUN = "+")
+        }
+        else {
+          f_group <- f_group |>
+            sweep(MARGIN = c(1,2),STATS = mu_group, FUN = "+") |>
+            sweep(MARGIN = c(1,3), STATS = t(f_global), FUN = "+")
+        }
+        gp_dat <- f_group@data
+
+      } else {
+        gp_dat <- f_group@data
+      }
+      #tidy_quants <- .tidy_quantiles(gp_dat,t_grid,G,g_membership,
+      #                               n_grid,level=level,.width = .width)
+      recon_data$gp_dat <- gp_dat
+      return(recon_data)
+
+    } else if (level == "global") {
+      if (dev_only) {
+        warning("Computing deviations only can only be performed at lower hierarchy levels (ind, group). Defaulting to global GP trace")
+      }
+
+      gp_dat <- f_global |>
+        sweep(MARGIN = 2, STATS = mu_global, FUN = "+") |> t()
+      recon_data$gp_dat <- gp_dat
+      return(recon_data)
+      #tidy_quants <- .tidy_quantiles(t(gp_dat),t_grid,1,g_membership,
+      #                               n_grid,level=level,.width = .width)
+
+
+    } else stop("Please choose a level from 'ind', 'group' and 'global'")
+  } else {
+    gp_dat <- f_ind@data
+
+    recon_data$gp_dat <- gp_dat
+    return(recon_data)
   }
-
-  if (level == "ind") {
-    if (!dev_only) gp_dat <- f_group_ind@data
-    else gp_dat <- f_ind@data
-    recon_data$gp_dat <- gp_dat
-
-    return(recon_data)
-    #tidy_quants <- .tidy_quantiles(gp_dat,t_grid,I,g_membership,n_grid,level=level,.width = .width)
-  } else if (level == "group") {
-
-
-    if (!dev_only) {
-      if ("one_group" %in% class(model)) {
-        f_group <- f_group |> sweep(MARGIN = 1,STATS = mu_group, FUN = "+")
-      }
-      else {
-        f_group <- f_group |>
-          sweep(MARGIN = c(1,2),STATS = mu_group, FUN = "+") |>
-          sweep(MARGIN = c(1,3), STATS = t(f_global), FUN = "+")
-      }
-      gp_dat <- f_group@data
-
-    } else {
-      gp_dat <- f_group@data
-    }
-    #tidy_quants <- .tidy_quantiles(gp_dat,t_grid,G,g_membership,
-    #                               n_grid,level=level,.width = .width)
-    recon_data$gp_dat <- gp_dat
-    return(recon_data)
-
-  } else if (level == "global") {
-    if (dev_only) {
-      warning("Computing deviations only can only be performed at lower hierarchy levels (ind, group). Defaulting to global GP trace")
-    }
-
-    gp_dat <- f_global |>
-      sweep(MARGIN = 2, STATS = mu_global, FUN = "+") |> t()
-    recon_data$gp_dat <- recon_data
-    return(recon_data)
-    #tidy_quants <- .tidy_quantiles(t(gp_dat),t_grid,1,g_membership,
-    #                               n_grid,level=level,.width = .width)
-
-
-  } else stop("Please choose a level from 'ind', 'group' and 'global'")
 
 }
 
 
+#' @param model
+#'
+#' @param recon_data
+#' @param level
+#' @param prior
+#' @param dev_only
+#' @param resolution
+#' @param .width
+#' @param rescale
+#'
 #' @export
 tidy_traces <- function(model = NULL, recon_data = NULL, level = c("ind","group","global"),
                         prior = FALSE, dev_only = FALSE, resolution = 0.2, .width=c(0.5,0.8,0.99), rescale = FALSE) {
@@ -190,6 +218,17 @@ tidy_traces <- function(model = NULL, recon_data = NULL, level = c("ind","group"
   return(tidy_quants)
 }
 
+#' @param model
+#'
+#' @param recon_data
+#' @param level
+#' @param prior
+#' @param dev_only
+#' @param resolution
+#' @param .width
+#' @param n_samples
+#' @param rescale
+#'
 #' @export
 draw_traces <- function(model = NULL,recon_data = NULL, level="ind",prior=FALSE, dev_only = FALSE,
                             resolution = 0.1, .width=c(0.5,0.8,0.99), n_samples = 1000, rescale = FALSE) {
@@ -214,6 +253,15 @@ draw_traces <- function(model = NULL,recon_data = NULL, level="ind",prior=FALSE,
   return(tidy_samples)
 }
 
+#' @param model
+#'
+#' @param recon_data
+#' @param level
+#' @param prior
+#' @param dev_only
+#' @param resolution
+#' @param rescale
+#'
 #' @export
 summarise_traces <- function(model = NULL,recon_data = NULL, level="ind",prior=FALSE, dev_only = FALSE,
                              resolution = 0.1, rescale = FALSE) {

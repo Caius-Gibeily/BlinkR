@@ -22,7 +22,7 @@ gp_fit.data.frame <- function(events,...) {
 
 #' @export
 #' @method gp_fit list
-gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind",subset=NULL,
+gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind",subs=NULL,
                        event_times = "event_times", dt = "dt",run = c("prior_pc","fit"),
 
                        M = 40, family = c("exponential","gamma","weibull","lognormal","gengamma"),
@@ -291,6 +291,41 @@ gp_fit.full_config <- function(model_data) {
   class(model_data) <- c("gp_model",class(model_data))
   gp_fit(model_data)
 }
+
+#' @export
+.filter_reindex <- function(tib, subs, ...) {
+  cols <- c(...)
+  tib <- tib |> dplyr::filter(if_any(all_of(cols),
+                                    ~ .x %in% subs))
+  for (col in cols) {
+    tib[[col]] <- as.integer(forcats::fct_inorder(as.character(tib[[col]])))
+  }
+  return(tib)
+}
+
+#' @export
+filter_data <- function(event_data, subs, by = c("ind", "group")) {
+  by <- match.arg(by)
+
+  if (by == "ind") {
+    event_data$traces <- .filter_reindex(event_data$traces, subs, "ind")
+    event_data$events <- .filter_reindex(event_data$events, subs, "ind")
+  } else {
+    event_data$traces <- .filter_reindex(event_data$traces, subs, "ind", "group")
+    event_data$group_traces <- .filter_reindex(event_data$group_traces, subs, "group")
+    event_data$events <- .filter_reindex(event_data$events, subs, "group", "ind")
+  }
+
+  event_data$n_ind <- dplyr::n_distinct(event_data$traces$ind)
+  event_data$n_groups <- dplyr::n_distinct(event_data$traces$group)
+
+
+  if (event_data$n_groups == 1) event_data$type <- "one_group"
+  if (event_data$n_ind == 1)  event_data$type <- "one_ind"
+
+  return(event_data)
+}
+
 #' @noRd
 .get_flags <- function(model_data) {
   flags <- list()

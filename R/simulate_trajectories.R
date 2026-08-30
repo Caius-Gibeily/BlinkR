@@ -7,6 +7,7 @@
 #' @param sd_group Numeric. Group-level coefficient standard deviation.
 #' @param sd_ind Numeric. Individual-level coefficient standard deviation.
 #' @param mu_coeffs Numeric vector. Mean coefficients for the spline basis.
+#' @param seed
 #'
 #' @return A list containing `group_traces` and `ind_traces`.
 #' @export
@@ -193,9 +194,6 @@ simulate_gp_trajectories <- function(duration = 100, n_groups = 1, n_ind = 10,
   return(sim_traces)
 }
 
-# ==============================================================================
-# Helpers
-# ==============================================================================
 .create_sim_struct <- function(n_groups, n_ind) {
   tibble::rowid_to_column(
     tidyr::expand_grid(group = as.factor(seq_len(n_groups)), subgroup_id = as.factor(seq_len(n_ind))),

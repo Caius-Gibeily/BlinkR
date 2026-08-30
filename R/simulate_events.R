@@ -1,20 +1,19 @@
 #' Simulate inhomogeneous renewal processes
 #'
-#' @param traces Tibble or Data.Frame object. A dataframe with columns containing group and individual id and their simulated latent trajectory.
-#' @param group Integer. Number of individuals.
-#' @param ind Integer. Number of groups.
-#' @param family Character vector. Choice of survival family from which to draw renewal events. Exponential, gamma, log-normal and generalised gamma are supported.
-#' @param scale Equal to the inverse of rate. The scale is the time-varying
-#' @param mu Location parameter of the log-normal and generalised gamma families. It is an alternative parameterisation of the generalised gamma family relative to the Stacey (1962) shape, k and scale parameters.
-#' @param shape Weibull shape parameter. When shape = 1 and k != 1, the distribution becomes a gamma distribution.
-#' @param k Numeric. Group-level coefficient standard deviation.
-#' @param sigma Numeric. Individual-level coefficient standard deviation.
-#' @param Q Numeric. Mean coefficients for the spline basis.
-#' @param baseline Numeric. Group-level coefficient standard deviation.
-#' @param baseline_sd Numeric. Individual-level coefficient standard deviation.
-#' @param lerp Numeric. Mean coefficients for the spline basis.
+
+#' @param trace_data
 #'
-#' @return A tibble containing simulated event times for each group.
+#' @param group
+#' @param ind
+#' @param family
+#' @param shape
+#' @param k
+#' @param sigma
+#' @param Q
+#' @param baseline
+#' @param lerp
+#' @param seed
+#'
 #' @export
 simulate_events <- function(trace_data, group = group, ind = ind, family = c("exponential","gamma","weibull",
                                                  "log-normal","gengamma"),shape = 1, k = 2, sigma = 1,
