@@ -165,8 +165,8 @@ model {
   mu_raw_group ~ std_normal();
   mu_raw_ind ~ std_normal();
 
-  sigma_group ~ normal(0.5,0.2);
-  sigma_ind ~ normal(0.5,0.2);
+  sigma_group ~ normal(0.3,0.2);
+  sigma_ind ~ normal(0.2,0.2);
 
   apply_prior_lp(mu_global, distributions[1], params[1, 1], params[1, 2]);
 
@@ -207,5 +207,35 @@ model {
 
   for (n in 1:N_total) {
     target += log_sum_exp(log_kernel[n, ]);
+  }
+}
+
+
+generated quantities {
+
+  // Log likelihood computation
+  vector[N_total] log_lik;
+  array[3] vector[N_total] eta_quad;
+
+  for (j in 1:3) {
+    vector[N_total] f_global = PHI_quad[j] * beta_global;
+    vector[N_total] f_group = rows_dot_product(PHI_quad[j], beta_group[g_id, ]);
+    vector[N_total] f_ind = rows_dot_product(PHI_quad[j], beta_ind[ind_id, ]);
+
+
+    eta_quad[j] = mu_ind[ind_id] + f_global + f_group + f_ind;
+  }
+
+  matrix[N_total, 3] log_kernel;
+
+  if (family == 1)      log_kernel = exponential_likelihood(N_total, log_qw, eta_quad, dt);
+  else if (family == 2) log_kernel = gamma_likelihood(N_total, log_qw, eta_quad, dt, k[1]);
+  else if (family == 3) log_kernel = weibull_likelihood(N_total, log_qw, eta_quad, dt, shape[1]);
+  else if (family == 4) log_kernel = lognormal_likelihood(N_total, log_qw, eta_quad, dt, sigma_lognormal[1]);
+  else if (family == 5) log_kernel = gengamma_likelihood(N_total, log_qw, eta_quad, dt, k[1], shape[1]);
+  else reject("Invalid family specified: ", family);
+
+    for (n in 1:N_total) {
+    log_lik[n] = log_sum_exp(log_kernel[n, ]);
   }
 }

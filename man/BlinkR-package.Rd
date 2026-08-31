@@ -4,9 +4,10 @@
 \name{BlinkR-package}
 \alias{BlinkR-package}
 \alias{BlinkR}
-\title{The 'BlinkR' package.}
+\title{renewr: Recovery of modulated renewal processes via Gaussian process modelling}
 \description{
-A DESCRIPTION OF THE PACKAGE
+A compact toolkit for Gaussian-process modelling of time-series discrete event data
+\if{html}{\figure{hex_sticker_RenewR.png}{options: style="float: right" width="150" alt="Hex Sticker"}}
 }
 \references{
 Stan Development Team (NA). RStan: the R interface to Stan. R package version 2.32.7. https://mc-stan.org
@@ -20,11 +21,5 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: First Last \email{first.last@example.com}
-
-Authors:
-\itemize{
-  \item First Last \email{first.last@example.com}
-}
-
+Caius Gibeily \email{cgibeil@emory.edu}
 }

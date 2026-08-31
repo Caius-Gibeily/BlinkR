@@ -1,18 +1,30 @@
-#' Plot Simulation Traces
+#' Plot Traces of Simulated Data
 #'
-#' @param x An object of class \code{sim_traces}.
+#' @param sim_data An object of class `sim_traces` or `sim_events`.
 #' @param level Character vector specifying which levels to plot.
-#'   Options include \code{"individual"}, \code{"group"}, or \code{"global"}. Defaults to all three.
-#' @param facet Logical. If \code{TRUE}, splits plots up by group or individual.
-#' @param separate_pages Logical. If \code{TRUE} and \code{facet = TRUE}, outputs a layout
-#'   across multiple pages via \code{gridExtra}.
-#' @param ... Additional arguments passed to methods (ignored).
+#'   Options include `"ind"` (individual), `"group"`, or `"global"`. Defaults to all three.
+#' @param facet Logical. If `TRUE`, splits plots into separate panels by group or
+#' individual.
+#' @param width Numeric. Width of the event rasters. The default is 0.1. Passed to [ggplot2::geom_tile()]
+#' @param height Numeric. Height of the event rasters. The default is 0.2. Passed to [ggplot2::geom_tile()]
+#' @param size Numeric. Axis label size. Default is 10
+#' @returns A ggplot showing plotted traces at the level(s) specified and event raster
+#' subplots faceted by individual or group, if specified.
+#' @examples
+#' gp_traces <- simulate_gp_traces(n_ind = 5, alpha_group = 0.5, rho_group = 10,
+#' seed = 123)
+#' # Plot traces
+#' plot(gp_traces)
+#'
+#' # Simulate a modulated point process drawn from a Weibull and plot the traces + events
+#' events <- simulate_events(gp_traces, family = "weibull")
+#' plot(events)
 #'
 #' @export
 #' @method plot sim_traces
 plot.sim_traces <- function(sim_data, level = c("individual", "group", "global"),
-                            facet = TRUE, separate_pages = FALSE, width = 0.1, height = 0.2, size = 10,...) {
-
+                            facet = TRUE, width = 0.1,
+                            height = 0.2, size = 10) {
   if (!requireNamespace("patchwork", quietly = TRUE)) {
     stop("Package 'patchwork' is required for stacking subplots.")
   }
@@ -46,15 +58,21 @@ plot.sim_traces <- function(sim_data, level = c("individual", "group", "global")
   purple_palette <- colorRampPalette(brewer.pal(9, "Purples"))(n_groups)
 
   build_base_plot <- function(ind_sub = NULL, grp_sub = NULL, ev_sub = NULL, title_suffix = "") {
-    p <- ggplot() + theme_minimal() + labs(x = "Time (t)", y = "Eta(t)")
+    p <- ggplot() +
+      theme_minimal() +
+      labs(x = "Time (t)", y = "Eta(t)")
 
     if ("individual" %in% level && !is.null(ind_sub) && nrow(ind_sub) > 0) {
       i_x <- if ("x" %in% names(ind_sub)) "x" else "time"
       i_y <- if ("y_offset" %in% names(ind_sub)) "y_offset" else "y"
 
-      p <- p + geom_line(data = ind_sub,
-                         aes(x = .data[[i_x]], y = .data[[i_y]], group = interaction(group, ind),
-                             color = as.factor(ind)), alpha = 0.6, linewidth = 0.5) +
+      p <- p + geom_line(
+        data = ind_sub,
+        aes(
+          x = .data[[i_x]], y = .data[[i_y]], group = interaction(group, ind),
+          color = as.factor(ind)
+        ), alpha = 0.6, linewidth = 0.5
+      ) +
         scale_color_viridis_d(guide = "none")
     }
 
@@ -62,9 +80,11 @@ plot.sim_traces <- function(sim_data, level = c("individual", "group", "global")
       g_x <- "x"
       g_y <- if ("y_offset" %in% names(grp_sub)) "y_offset" else "y"
 
-      p <- p + geom_line(data = grp_sub,
-                         aes(x = .data[[g_x]], y = .data[[g_y]], group = group),
-                         color = "black",linewidth = 1) +
+      p <- p + geom_line(
+        data = grp_sub,
+        aes(x = .data[[g_x]], y = .data[[g_y]], group = group),
+        color = "black", linewidth = 1
+      ) +
         labs(color = "Group")
     }
 
@@ -72,9 +92,11 @@ plot.sim_traces <- function(sim_data, level = c("individual", "group", "global")
       gl_x <- "x"
       gl_y <- if ("y_offset" %in% names(global_data)) "y_offset" else "y"
 
-      p <- p + geom_line(data = global_data,
-                         aes(x = .data[[gl_x]], y = .data[[gl_y]]),
-                         color = "black", linewidth = 1.4, linetype = "dashed")
+      p <- p + geom_line(
+        data = global_data,
+        aes(x = .data[[gl_x]], y = .data[[gl_y]]),
+        color = "black", linewidth = 1.4, linetype = "dashed"
+      )
     }
 
     if (title_suffix != "") {
@@ -82,16 +104,20 @@ plot.sim_traces <- function(sim_data, level = c("individual", "group", "global")
     }
 
     if (!is.null(ev_sub) && nrow(ev_sub) > 0) {
-      p_below <- ggplot(data = ev_sub,
-                        aes(x = event_times,
-                            y = factor(ind),
-                            group = interaction(ind,group),
-                            color = interaction(ind,group),
-                            fill = interaction(ind,group))) +
+      p_below <- ggplot(
+        data = ev_sub,
+        aes(
+          x = event_times,
+          y = factor(ind),
+          group = interaction(ind, group),
+          color = interaction(ind, group),
+          fill = interaction(ind, group)
+        )
+      ) +
         geom_tile(width = width, height = height) +
         scale_color_viridis_d(guide = "none") +
         scale_fill_viridis_d(guide = "none") +
-        labs(x = "Time (t)", y = "Individual",) +
+        labs(x = "Time (t)", y = "Individual", ) +
         theme(axis.text = element_text(size = size)) +
         theme_minimal()
 
@@ -108,9 +134,7 @@ plot.sim_traces <- function(sim_data, level = c("individual", "group", "global")
   if (!facet) {
     p <- build_base_plot(ind_data, grp_data, event_data, title_suffix = "Simulation Traces (All Layered)")
     return(p)
-
   } else {
-
     for (g in unique_groups) {
       i_sub <- ind_data |> dplyr::filter(group == g)
       g_sub <- grp_data |> dplyr::filter(group == g)
@@ -124,19 +148,12 @@ plot.sim_traces <- function(sim_data, level = c("individual", "group", "global")
       plots_list[[paste0("Group_", g)]] <- p_g
     }
 
-    if (separate_pages) {
-      if (!requireNamespace("gridExtra", quietly = TRUE)) {
-        stop("Package 'gridExtra' is required for multi-page rendering.")
-      }
-      return(gridExtra::marrangeGrob(plots_list, nrow = 1, ncol = 1))
 
-    } else {
+    combined_plot <- patchwork::wrap_plots(plots_list, ) +
+      patchwork::plot_layout(guides = "collect") +
+      patchwork::plot_annotation(title = "Trace Simulation")
 
-      combined_plot <- patchwork::wrap_plots(plots_list, ) +
-        patchwork::plot_layout(guides = "collect") +
-        patchwork::plot_annotation(title = "Trace Simulation")
+    return(combined_plot)
 
-      return(combined_plot)
-    }
   }
 }

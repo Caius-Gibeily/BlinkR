@@ -1,41 +1,62 @@
-#' @param model
+#' Plot prior or posterior predictive checks on fitted model
+#' @description
+#' Plot a series of posterior predictive checks based on [ppc_get_eventrate()],
+#' [ppc_get_interevent_dist()] and [ppc_get_inst_eventrate()].
 #'
-#' @param n_samples
-#' @param palette
-#' @param prior
-#' @param .width
-#' @param bw_kde
-#' @param bw_rate
-#' @param scale_factor
-#' @param gridsize
-#' @param ...
+#' @inheritParams mcmc_plot
+#' @inheritParams plot.gp_model
+#' @param bw_kde Numeric or character. The smoothing bandwidth to use for the interevent interval
+#' distribution. The default is `"nrd0"` (see [stats::density()])
+#' @param bw_rate Numeric. The smoothing bandwidth to use for
+#' computing the instantaneous event rate
+#' @param scale_factor Numeric. The factor to scale event rate and instantaneous
+#' event rate, both of which are by default in events/s.
+#' @param resolution Numeric. The resolution of the time grid for computing instantaneous
+#' event rate (see [ppc_get_inst_eventrate()]). By default, this is 0.01
+#' @param ... Optional plotting arguments.
+#' @returns A series of ggplots.
 #'
 #' @export
 ppc_plot_all <- function(model, n_samples = 1000, palette = "Blues",prior=FALSE,
-                              .width = c(0.5,0.8,0.99), bw_kde = 0.5, bw_rate = 5, scale_factor = 1, gridsize = 500,...) {
+                              .width = c(0.5,0.8,0.99), bw_kde = 0.5, bw_rate = 5,
+                         scale_factor = 1, resolution = 0.01,...) {
+
   ppc_events <- ppc_draw_events(model,n_samples = n_samples,prior=prior)
 
   if (!("gp_model") %in% class(model)) stop("Please use a fitted renewr model")
 
-  # Global blink rate
+  # Overall blink rate
   p1 <- ppc_get_eventrate(model = model,
                           scale_factor=scale_factor,...)
   # Interevent distribution
   p2 <- ppc_get_interevent_dist(ppc_events = ppc_events,
-                                    model = model,...)
+                                    model = model,bw_kde = bw_kde, ...)
   # Instantaneous blink rate
   p3 <- ppc_get_inst_eventrate(ppc_events = ppc_events,
-                                   model = model,...)
+                                   model = model, bw_rate = bw_rate,
+                               resolution = resolution,
+                               scale_factor = scale_factor, ...)
 
   .ggplot_successive(p1,p2,p3)
 }
 
+#' Generate events from prior or posterior predictive distribution of a GP model
+#' @description
+#' Taking n random MCMC draws from the prior or posterior, events are generated,
+#' using the baseline, GP and survival parameters of the draw at the individual level
+#' across the full duration of the time domain.
+#' @inheritParams plot.gp_model
+#' @returns Generated events at the individual level given the prior or posterior
+#' model parameters.
+#' @seealso [draw_traces()], [ppc_get_eventrate()], [ppc_get_interevent_dist()],
+#' [ppc_get_inst_eventrate().
 #' @export
-ppc_draw_events <- function(model, n_samples, prior = FALSE) {
+ppc_draw_events <- function(model, n_samples, prior = FALSE, resolution = 0.1) {
 
-  post_data <- draw_traces(model, n_samples = n_samples, prior = prior)
-  samples <- post_data$sampled_traces
-  params <- post_data$survival_params
+  ppc_data <- draw_traces(model, n_samples = n_samples, prior = prior,
+                           resolution = resolution)
+  samples <- ppc_data$sampled_traces
+  params <- ppc_data$survival_params
 
   family <- if (!is.null(params$k) & !is.null(params$shape)) {
     "gengamma"
@@ -61,16 +82,17 @@ ppc_draw_events <- function(model, n_samples, prior = FALSE) {
   return(ppc_events)
 }
 
-#' @param model
-#'
-#' @param ppc_events
-#' @param scale_factor
-#' @param .width
-#' @param palette
-#' @param return_plot
-#' @param n_samples
-#' @param prior
-#'
+#' Plot overall event rate from prior or posterior predictive distribution
+#' @inheritParams ppc_plot_all
+#' @param ppc_events tibble. Optional tibble of pre-drawn prior/posterior predictive
+#' events generated via [ppc_draw_events()]. If ppc_events is `NULL`, the default,
+#' `model` cannot be `NULL` and events will be generated via the function on the passed model.
+#' @inheritParams plot.gp_model
+#' @param return_plot Boolean. Specify whether to return a ggplot or a list of data.
+#' By default, this is TRUE
+#' @returns Either a ggplot or a list of observed
+#' overall blink rates per individual and blink rate distributions via PPC.
+#' @seealso [ppc_get_interevent_dist()], [ppc_get_inst_eventrate()], [ppc_plot_all()].
 #' @export
 ppc_get_eventrate <- function(model,ppc_events=NULL,scale_factor=1,.width=c(0.5,0.8,0.99),
                               palette = "Purples",return_plot=TRUE, n_samples=1000, prior = FALSE) {
@@ -100,7 +122,7 @@ ppc_get_eventrate <- function(model,ppc_events=NULL,scale_factor=1,.width=c(0.5,
                                          xend = as.numeric(factor(ind)) + 0.2,
                                          y = br_global,yend = br_global),
                             color = "#014636",size = 1.2) +
-      ggplot2::scale_color_brewer(palette = palette, name = "CI Width") +
+      ggplot2::scale_color_brewer(palette = palette, name = "CrI Width") +
       ggplot2::theme_minimal() +
       ggplot2::labs(x = "Individual",
                     y = "Event rate (blinks/min)",
@@ -112,71 +134,77 @@ ppc_get_eventrate <- function(model,ppc_events=NULL,scale_factor=1,.width=c(0.5,
   }
 }
 
-#' @param model
-#'
-#' @param ppc_events
-#' @param n_samples
-#' @param .width
-#' @param bw_kde
-#' @param return_plot
-#' @param prior
-#'
+#' Plot inter-event distributions from prior posterior predictive distribution
+#' @inheritParams ppc_plot_all
+#' @inheritParams ppc_get_eventrate
+#' @inheritParams plot.gp_model
+#' @returns A ggplot or a list of data
+#' @seealso [ppc_get_eventrate()], [ppc_get_inst_eventrate()], [ppc_plot_all()].
 #' @export
-ppc_get_interevent_dist <- function(model, ppc_events = NULL, n_samples = 1000,
-                                    .width=c(0.5,0.8,0.99), bw_kde = 1.2, return_plot = TRUE, prior = FALSE) {
-  if (is.null(ppc_events) & is.null(model)) {
+ppc_get_interevent_dist <- function(model = NULL, ppc_events = NULL, n_samples = 1000, palette = "Purples",
+                                    .width = c(0.5, 0.8, 0.99), bw_kde = 1.2, return_plot = TRUE, prior = FALSE) {
+  if (is.null(ppc_events) && is.null(model)) {
     stop("Please provide either posterior generated events or a fitted Renewr model")
   } else if (is.null(ppc_events)) {
-    ppc_events <- ppc_draw_events(model,n_samples = n_samples, prior = prior)
+    ppc_events <- ppc_draw_events(model, n_samples = n_samples, prior = prior)
   }
 
-  dt_high <- stats::quantile(ppc_events$dt, 0.99)
+  grid_bounds <- ppc_events |>
+    dplyr::group_by(ind) |>
+    dplyr::summarise(to_val = stats::quantile(dt, 0.99, na.rm = TRUE), .groups = "drop")
+
+  ppc_events <- dplyr::left_join(ppc_events, grid_bounds, by = "ind")
+
   iei_dist <- ppc_events |>
     dplyr::group_by(ind, sample) |>
-    dplyr::reframe(
-      x = density(dt, n = 512, from = 0, to = quantile(dt,0.9), bw = bw_kde)$x,
-      y = density(dt, n = 512, from = 0, to = quantile(dt,0.9), bw = bw_kde)$y) |>
+    dplyr::reframe({
+      d <- stats::density(dt, n = 512, from = 0, to = to_val[1], bw = bw_kde)
+      tibble::tibble(x = d$x, y = d$y)
+    }) |>
     dplyr::group_by(ind, x) |>
     ggdist::mean_qi(y, .width = .width) |>
     dplyr::ungroup()
 
   if (return_plot) {
+    fd_bw <- .fd_binwidth(model$events$dt)
+
     p <- ggplot2::ggplot() +
       ggplot2::geom_histogram(
-        data = model$events, ggplot2::aes(x = dt, y = ggplot2::after_stat(density),group=ind),
+        data = model$events,
+        ggplot2::aes(x = dt, y = ggplot2::after_stat(density), group = ind),
         fill = "darkgrey", color = "white", alpha = 1,
-        binwidth = .fd_binwidth(model$events$dt)) +
-      ggdist::geom_lineribbon(data = iei_dist,
-                              ggplot2::aes(x=x,y=y,
-                                           ymin = .lower, ymax = .upper,
-                                           fill = forcats::fct_rev(ordered(.width)), group = interaction(ind, .width)),
-                              alpha = 0.6) +
-      ggplot2::facet_wrap(~ ind, scale="free_x") +
-      ggplot2::scale_fill_brewer(palette = palette, name = "CI Width") +
+        binwidth = fd_bw
+      ) +
+      ggdist::geom_lineribbon(
+        data = iei_dist,
+        ggplot2::aes(
+          x = x, y = y,
+          ymin = .lower, ymax = .upper,
+          fill = forcats::fct_rev(ordered(.width)),
+          group = interaction(ind, .width)
+        ),
+        alpha = 0.6
+      ) +
+      ggplot2::facet_wrap(~ ind, scales = "free_x") +
+      ggplot2::scale_fill_brewer(palette = palette, name = "CrI Width") +
       ggplot2::theme_minimal() +
-      ggplot2::labs(x = "Inter-event Interval (IBI  (s))", y = "Density")
+      ggplot2::labs(x = "Inter-event Interval (IBI (s))", y = "Density")
+
     return(p)
-  }
-  else {
+  } else {
     return(iei_dist)
   }
 }
 
-#' @param model
-#'
-#' @param ppc_events
-#' @param bw_rate
-#' @param gridsize
-#' @param n_samples
-#' @param .width
-#' @param return_plot
-#' @param palette
-#' @param show_events
-#' @param prior
-#'
+#' Plot instantaneous event rates from prior or posterior predictive distributions
+#' @inheritParams ppc_plot_all
+#' @inheritParams ppc_get_eventrate
+#' @inheritParams plot.gp_model
+#' @returns A ggplot or a list of data
+#' @seealso [ppc_get_interevent_dist()], [ppc_get_eventrate()], [ppc_plot_all()].
 #' @export
 ppc_get_inst_eventrate <- function(model,ppc_events = NULL,
-                                       bw_rate = 8,gridsize = 500, n_samples = 1000,
+                                       bw_rate = 8,resolution = 0.01, n_samples = 1000,
                                    .width = c(0.5,0.8,0.99), return_plot = TRUE,
                                    palette = "Purples",show_events=TRUE, prior = FALSE) {
 
@@ -187,7 +215,7 @@ ppc_get_inst_eventrate <- function(model,ppc_events = NULL,
   }
 
   time_grid <- seq(0,model$settings$duration,
-                   length.out = gridsize)
+                   by = resolution)
 
   inst_rate_ppc <- ppc_events |>
     dplyr::group_by(ind, sample) |>
@@ -213,7 +241,7 @@ ppc_get_inst_eventrate <- function(model,ppc_events = NULL,
                                   fill = forcats::fct_rev(ordered(.width)), group = interaction(ind, .width)),
                               alpha = 0.8, linewidth = 0.6) +
 
-      ggplot2::scale_fill_brewer(palette = palette, name = "CI Width") +
+      ggplot2::scale_fill_brewer(palette = palette, name = "CrI Width") +
       ggplot2::theme_minimal() +
       ggplot2::labs(x = "Time", y = "Instantaneous event rate (s)",
                     fill = "Credible Interval") +

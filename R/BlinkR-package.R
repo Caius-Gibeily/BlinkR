@@ -1,7 +1,8 @@
-#' The 'BlinkR' package.
+#' renewr: Recovery of modulated renewal processes via Gaussian process modelling
 #'
-#' @description A DESCRIPTION OF THE PACKAGE
-#'
+#' @description A compact toolkit for Gaussian-process modelling of time-series discrete event data
+#' \if{html}{\figure{hex_sticker_RenewR.png}{options: style="float: right" width="150" alt="Hex Sticker"}}
+#' @author Caius Gibeily \email{cgibeil@emory.edu}
 #' @name BlinkR-package
 #' @aliases BlinkR
 #' @useDynLib BlinkR, .registration = TRUE

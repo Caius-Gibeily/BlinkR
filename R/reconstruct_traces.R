@@ -1,19 +1,7 @@
-
-
-###
-# should be modular and cumulative:
-## plot features:
-# posterior trajectories and bands. If simulation, then also show ground truth trajectories
-# prior predictive checks: copies of each stan script but only with generated quantities
-# option to select sample trajectories, event rasters/heatmaps, event rates and interevent distributions
-
-#' @param model
-#'
-#' @param level
-#' @param prior
-#' @param dev_only
-#' @param resolution
-#'
+#' Reconstruct traces from Hilbert space
+#' @inheritParams plot.gp_model
+#' @seealso [tidy_traces()], [draw_traces()], [summarise_traces()],
+#' [reconstruct_traces()]
 #' @export
 reconstruct_traces <- function(model, level = c("ind","group","global"), prior = FALSE, dev_only = FALSE, resolution = 0.1) {
   if (dev_only && "one_ind" %in% class(model)) {
@@ -71,7 +59,7 @@ reconstruct_traces <- function(model, level = c("ind","group","global"), prior =
                      level = level)
 
   survival_params <- switch(model$settings$family,
-                            "exponential" = NULL,
+                            "exponential" = list(),
                             "gamma" = list(k = post_data$k),
                             "weibull" = list(shape = post_data$shape),
                             "gengamma" = list(k = post_data$k,
@@ -110,7 +98,6 @@ reconstruct_traces <- function(model, level = c("ind","group","global"), prior =
 
     beta_group <- as.tensor(beta_group)
 
-
     mu_group <- post_data$mu_group
 
     f_group <- ttm(beta_group,phi_basis,3) #|> sweep(MARGIN = c(1,2),
@@ -141,12 +128,11 @@ reconstruct_traces <- function(model, level = c("ind","group","global"), prior =
       #tidy_quants <- .tidy_quantiles(gp_dat,t_grid,I,g_membership,n_grid,level=level,.width = .width)
     } else if (level == "group") {
 
-
       if (!dev_only) {
         if ("one_group" %in% class(model)) {
-          f_group <- f_group |> sweep(MARGIN = 1,STATS = mu_group, FUN = "+")
-        }
-        else {
+          f_group <- f_group |> sweep(MARGIN = 1,
+                                      STATS = mu_group, FUN = "+")
+        } else {
           f_group <- f_group |>
             sweep(MARGIN = c(1,2),STATS = mu_group, FUN = "+") |>
             sweep(MARGIN = c(1,3), STATS = t(f_global), FUN = "+")
@@ -168,6 +154,7 @@ reconstruct_traces <- function(model, level = c("ind","group","global"), prior =
 
       gp_dat <- f_global |>
         sweep(MARGIN = 2, STATS = mu_global, FUN = "+") |> t()
+
       recon_data$gp_dat <- gp_dat
       return(recon_data)
       #tidy_quants <- .tidy_quantiles(t(gp_dat),t_grid,1,g_membership,
@@ -184,17 +171,13 @@ reconstruct_traces <- function(model, level = c("ind","group","global"), prior =
 
 }
 
-
-#' @param model
-#'
-#' @param recon_data
-#' @param level
-#' @param prior
-#' @param dev_only
-#' @param resolution
-#' @param .width
-#' @param rescale
-#'
+#' Transform reconstructed traces into tidy format
+#' @inheritParams plot.gp_model
+#' @param recon_data Optional. Reconstructed trace data created by [reconstruct_traces()].
+#' If NULL, then `model` cannot be NULL; the traces will first be reconstructed and then
+#' transformed into tidy format.
+#' @returns trace data in tidy format
+#' @seealso [draw_traces()], [summarise_traces()], [reconstruct_traces()]
 #' @export
 tidy_traces <- function(model = NULL, recon_data = NULL, level = c("ind","group","global"),
                         prior = FALSE, dev_only = FALSE, resolution = 0.2, .width=c(0.5,0.8,0.99), rescale = FALSE) {
@@ -218,17 +201,11 @@ tidy_traces <- function(model = NULL, recon_data = NULL, level = c("ind","group"
   return(tidy_quants)
 }
 
-#' @param model
-#'
-#' @param recon_data
-#' @param level
-#' @param prior
-#' @param dev_only
-#' @param resolution
-#' @param .width
-#' @param n_samples
-#' @param rescale
-#'
+#' Draw random GP trace samples at the level (individual, group, global) specified
+#' @inheritParams plot.gp_model
+#' @inheritParams tidy_traces
+#' @returns Sampled GP traces in tidy format at the level specified.
+#' @seealso [tidy_traces()], [summarise_traces()], [reconstruct_traces()]
 #' @export
 draw_traces <- function(model = NULL,recon_data = NULL, level="ind",prior=FALSE, dev_only = FALSE,
                             resolution = 0.1, .width=c(0.5,0.8,0.99), n_samples = 1000, rescale = FALSE) {
@@ -238,30 +215,25 @@ draw_traces <- function(model = NULL,recon_data = NULL, level="ind",prior=FALSE,
   if (is.null(recon_data)) {
     recon_data <- reconstruct_traces(model, level, prior, dev_only, resolution)
   }
-
+  print(names(recon_data))
   if (rescale) {
     recon_data$gp_dat <- .apply_rescaling(model,recon_data)
   }
 
-  draw_params <- list(.width = .width,
-                      n_samples = n_samples)
-
-  recon_data <- append(recon_data,draw_params)
+  recon_data$n_samples <- n_samples
   recon_data <- recon_data[!(names(recon_data) %in% c("level",".width"))]
+
   tidy_samples <- do.call(.tidy_samples,recon_data)
 
   return(tidy_samples)
 }
 
-#' @param model
-#'
-#' @param recon_data
-#' @param level
-#' @param prior
-#' @param dev_only
-#' @param resolution
-#' @param rescale
-#'
+#' Summarise mean and standard deviation envelopes of recovered GP traces
+#' @inheritParams plot.gp_model
+#' @inheritParams tidy_traces
+#' @returns Summary trace data, showing mean and standard deviation at each sampled
+#' time point along each recovered trace.
+#' @seealso [tidy_traces()], [draw_traces()], [reconstruct_traces()]
 #' @export
 summarise_traces <- function(model = NULL,recon_data = NULL, level="ind",prior=FALSE, dev_only = FALSE,
                              resolution = 0.1, rescale = FALSE) {
@@ -411,11 +383,14 @@ summarise_traces <- function(model = NULL,recon_data = NULL, level="ind",prior=F
   } else if (model$settings$family == "gengamma") {
     rescaled <- recon_data$gp_dat |>
       sweep(MARGIN = 1,
-            STATS = log(gamma((recon_data$survival_params$shape+1)/
-                                recon_data$survival_params$k)/
-                          gamma((recon_data$survival_params$shape)/
-                                  recon_data$survival_params$k)),
+            STATS = log(gamma((recon_data$survival_params$k+1)/
+                                recon_data$survival_params$shape)/
+                          gamma((recon_data$survival_params$k)/
+                                  recon_data$survival_params$shape)),
             FUN = "+")
+  } else if (model$settings$family == "exponential") {
+    warning("No rescaling necessary for exponential family: the expected value is equal to the scale of the process")
+    rescaled <- recon_data$gp_dat
   }
 
   return(rescaled)

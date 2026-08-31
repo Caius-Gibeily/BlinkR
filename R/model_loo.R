@@ -1,5 +1,3 @@
-library(loo)
-
 #' @export
 model_loo <- function(model) {
   if (!inherits(model, "gp_model")) {

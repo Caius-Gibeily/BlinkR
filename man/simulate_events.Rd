@@ -2,7 +2,7 @@
 % Please edit documentation in R/simulate_events.R
 \name{simulate_events}
 \alias{simulate_events}
-\title{Simulate inhomogeneous renewal processes}
+\title{Simulate modulated renewal processes from a collection of hierarchical traces}
 \usage{
 simulate_events(
   trace_data,
@@ -14,10 +14,68 @@ simulate_events(
   sigma = 1,
   Q = 0,
   baseline = 0,
-  lerp = 100,
+  resolution = 0.005,
   seed = NULL
 )
 }
+\arguments{
+\item{trace_data}{A \code{sim_traces} object containing simulated traces, created
+by any of the simulate_* functions (see \code{\link[=simulate_spline_traces]{simulate_spline_traces()}},
+\code{\link[=simulate_gp_traces]{simulate_gp_traces()}}, \code{\link[=simulate_boxcar_traces]{simulate_boxcar_traces()}}). An external
+data.frame or tibble may also be passed.}
+
+\item{group}{Character. The column name containing group ID. By default, this is
+set to \code{"group"} and need not be modified if passing a \code{sim_traces} object.}
+
+\item{ind}{Character. The column name containing group ID. By default, this is
+set to \code{"ind"} and need not be modified if passing a \code{sim_traces} object.}
+
+\item{family}{Character. Choice of survival family distribution to draw events from.
+One of "exponential", "gamma", "weibull", "gengamma" (generalised gamma) and
+"lognormal". The default is "gamma".}
+
+\item{shape}{Numeric. The shape parameter of the Weibull and generalised gamma families.
+The generalised gamma, in its 1962 Stacy parameterisation, takes both shape and k
+parameters with the scale (equal to 1/rate)}
+
+\item{k}{Numeric. The shape parameter of the gamma and generalised gamma family.
+The generalised gamma, in its 1962 Stacy parameterisation, takes both shape and k
+parameters with the scale (equal to 1/rate), which is modelled as a time-varying
+smooth}
+
+\item{sigma}{Numeric. The standard deviation of the log-normal survival family.}
+
+\item{Q}{Numeric. In the modern generalised gamma parameterisation, Q is the shape
+parameter, alongside location parameter, mu (modelled as a time-varying smooth) and scale,
+sigma.}
+
+\item{baseline}{Numeric or numeric vector. The vertical offset or \eqn{\mu} to apply to simulated
+traces. If one value is supplied, the same baseline is applied to all individuals.
+If the length of a passed vector baseline inputs equals the number of groups,
+individual traces in each group will be adjusted by the respective value in the order
+passed. Conversely, if the length equals the total number of individuals, each individual
+trace will be translated by the respective value in the order of baselines passed and
+order of individual IDs. # note: ensure this is correct}
+
+\item{resolution}{Numeric. Time grid resolution for approximating the cumulative
+hazard function. By default, linear interpolation is performed at a resolution of 0.005.
+If the passed traces are already sufficiently time resolved, \code{resolution = NULL}
+may be passed to skip linear interpolation.}
+
+\item{seed}{Numeric. Set a seed for reproducibility. If one is not specified
+but seed was specified during trace simulation via the simulate_*_traces functions,
+seed is set to the same value. Otherwise, seed is NULL.}
+}
+\value{
+An object of class \code{sim_events} containing all data from \code{sim_traces} object,
+if passed, renewal process simulation parameters and simulated event data.
+}
 \description{
-Simulate inhomogeneous renewal processes
+A short description...
+}
+\examples{
+gp_traces <- simulate_gp_traces(n_ind = 5, alpha_group = 0.5, rho_group = 10,
+seed = 123)
+events <- simulate_events(gp_traces, family = "weibull")
+plot(events)
 }
