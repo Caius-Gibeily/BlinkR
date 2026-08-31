@@ -1,8 +1,9 @@
-Package: BlinkR
-Title: What the Package Does (One Line, Title Case)
+Package: renewr
+Title: Fitting Modulated Renewal Processes via Gaussian Processes
 Version: 0.0.0.9000
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
+    person("Caius", "Gibeily", , "cgibeil@emory.edu", role = c("cre"),
+    person("Sarah", "Shultz", , "sarah.shultz@emory.edu", role = "aut"))
 Description: What the package does (one paragraph).
 License: GPL-3
 Encoding: UTF-8
@@ -37,6 +38,6 @@ LinkingTo:
     rstan (>= 2.18.1),
     StanHeaders (>= 2.18.0)
 SystemRequirements: GNU make
-URL: https://github.com/Caius-Gibeily/BlinkR
-BugReports: https://github.com/Caius-Gibeily/BlinkR/issues
+URL: https://github.com/Caius-Gibeily/renewr
+BugReports: https://github.com/Caius-Gibeily/renewr/issues
 Biarch: true

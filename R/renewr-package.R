@@ -3,9 +3,9 @@
 #' @description A compact toolkit for Gaussian-process modelling of time-series discrete event data
 #' \if{html}{\figure{hex_sticker_RenewR.png}{options: style="float: right" width="150" alt="Hex Sticker"}}
 #' @author Caius Gibeily \email{cgibeil@emory.edu}
-#' @name BlinkR-package
-#' @aliases BlinkR
-#' @useDynLib BlinkR, .registration = TRUE
+#' @name renewr-package
+#' @aliases renewr
+#' @useDynLib renewr, .registration = TRUE
 #' @import methods
 #' @import Rcpp
 #' @import dplyr

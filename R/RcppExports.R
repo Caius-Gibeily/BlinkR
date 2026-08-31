@@ -2,10 +2,10 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 simulate_renewal <- function(time_vec, modulant_vec, sigma, Q) {
-    .Call(`_BlinkR_simulate_renewal`, time_vec, modulant_vec, sigma, Q)
+    .Call(`_renewr_simulate_renewal`, time_vec, modulant_vec, sigma, Q)
 }
 
 simulate_renewal_orig <- function(time_vec, modulant_vec, shape, k) {
-    .Call(`_BlinkR_simulate_renewal_orig`, time_vec, modulant_vec, shape, k)
+    .Call(`_renewr_simulate_renewal_orig`, time_vec, modulant_vec, shape, k)
 }
 

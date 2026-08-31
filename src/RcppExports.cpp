@@ -13,7 +13,7 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 
 // simulate_renewal
 NumericVector simulate_renewal(std::vector<double> time_vec, std::vector<double> modulant_vec, double sigma, double Q);
-RcppExport SEXP _BlinkR_simulate_renewal(SEXP time_vecSEXP, SEXP modulant_vecSEXP, SEXP sigmaSEXP, SEXP QSEXP) {
+RcppExport SEXP _renewr_simulate_renewal(SEXP time_vecSEXP, SEXP modulant_vecSEXP, SEXP sigmaSEXP, SEXP QSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -27,7 +27,7 @@ END_RCPP
 }
 // simulate_renewal_orig
 NumericVector simulate_renewal_orig(std::vector<double> time_vec, std::vector<double> modulant_vec, double shape, double k);
-RcppExport SEXP _BlinkR_simulate_renewal_orig(SEXP time_vecSEXP, SEXP modulant_vecSEXP, SEXP shapeSEXP, SEXP kSEXP) {
+RcppExport SEXP _renewr_simulate_renewal_orig(SEXP time_vecSEXP, SEXP modulant_vecSEXP, SEXP shapeSEXP, SEXP kSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -48,8 +48,8 @@ RcppExport SEXP _rcpp_module_boot_stan_fit4prior_pc_one_group_mod();
 RcppExport SEXP _rcpp_module_boot_stan_fit4prior_pc_one_ind_mod();
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_BlinkR_simulate_renewal", (DL_FUNC) &_BlinkR_simulate_renewal, 4},
-    {"_BlinkR_simulate_renewal_orig", (DL_FUNC) &_BlinkR_simulate_renewal_orig, 4},
+    {"_renewr_simulate_renewal", (DL_FUNC) &_renewr_simulate_renewal, 4},
+    {"_renewr_simulate_renewal_orig", (DL_FUNC) &_renewr_simulate_renewal_orig, 4},
     {"_rcpp_module_boot_stan_fit4hsgp_multi_group_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4hsgp_multi_group_mod, 0},
     {"_rcpp_module_boot_stan_fit4hsgp_one_group_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4hsgp_one_group_mod, 0},
     {"_rcpp_module_boot_stan_fit4hsgp_one_ind_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4hsgp_one_ind_mod, 0},
@@ -59,7 +59,7 @@ static const R_CallMethodDef CallEntries[] = {
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_BlinkR(DllInfo *dll) {
+RcppExport void R_init_renewr(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }

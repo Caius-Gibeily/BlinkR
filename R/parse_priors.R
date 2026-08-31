@@ -11,7 +11,7 @@ parse_priors.one_ind <- function(model_setup) {
   valid_variables = c("mu_ind","alpha_ind","rho_ind") %>%
     append(.get_family_priors(model_setup$settings$family))
 
-  path <- system.file("extdata", "default_priors_one_ind.csv", package = "BlinkR")
+  path <- system.file("extdata", "default_priors_one_ind.csv", package = "renewr")
 
   prior_frame <- .process_prior_frame(path = path,
                                       valid_variables = valid_variables,
@@ -27,7 +27,7 @@ parse_priors.one_group <- function(model_setup) {
                       "alpha_ind", "rho_group","rho_ind") %>%
     append(.get_family_priors(model_setup$settings$family))
 
-  path <- system.file("extdata", "default_priors_one_group.csv", package = "BlinkR")
+  path <- system.file("extdata", "default_priors_one_group.csv", package = "renewr")
 
   prior_frame <- .process_prior_frame(path = path,
                                       valid_variables = valid_variables,
@@ -42,7 +42,7 @@ parse_priors.multi_group <- function(model_setup) {
                       "alpha_group","alpha_ind", "rho_global","rho_group","rho_ind") %>%
     append(.get_family_priors(model_setup$settings$family))
 
-  path <- system.file("extdata", "default_priors_multi_group.csv", package = "BlinkR")
+  path <- system.file("extdata", "default_priors_multi_group.csv", package = "renewr")
 
   prior_frame <- .process_prior_frame(path = path,
                                       valid_variables = valid_variables,
