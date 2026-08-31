@@ -215,7 +215,7 @@ draw_traces <- function(model = NULL,recon_data = NULL, level="ind",prior=FALSE,
   if (is.null(recon_data)) {
     recon_data <- reconstruct_traces(model, level, prior, dev_only, resolution)
   }
-  print(names(recon_data))
+
   if (rescale) {
     recon_data$gp_dat <- .apply_rescaling(model,recon_data)
   }

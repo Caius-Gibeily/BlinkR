@@ -173,7 +173,7 @@ simulate_events <- function(trace_data, group = group, ind = ind, family = c(
       group_split(ind) |>
       map(\(x) .simulate_renewal(x,
         modulant = scale,
-        shape = shape, k = k, lerp = lerp
+        shape = shape, k = k, resolution = resolution
       )) |>
       list_rbind(names_to = "ind") |>
       mutate(ind = as.factor(ind)) |>
@@ -192,7 +192,7 @@ simulate_events <- function(trace_data, group = group, ind = ind, family = c(
       group_split(ind) |>
       map(\(x) .simulate_renewal(x,
         modulant = mu,
-        sigma = sigma, Q = 0, lerp = lerp
+        sigma = sigma, Q = 0, resolution = resolution
       )) |>
       list_rbind(names_to = "ind") |>
       mutate(ind = as.factor(ind)) |>
@@ -221,7 +221,7 @@ simulate_events <- function(trace_data, group = group, ind = ind, family = c(
 
 #' @noRd
 .simulate_renewal <- function(trace, modulant, shape, k, sigma, Q, resolution = 200) {
-  if (!is.null(lerp)) {
+  if (!is.null(resolution)) {
     lerp <- 1 / resolution
     trace_parts <- trace |> pull({{ modulant }})
     trace_parts <- trace_parts |> approx(n = max(trace$x) * lerp)

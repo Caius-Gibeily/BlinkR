@@ -54,7 +54,7 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind"
     duration <- events %>% reframe(max_t = max(.data[[event_times_str]])) %>% pull(max_t)
     warning("Setting duration to the latest event time. If this is incorrect, please set duration.")
   }
-  print("test")
+
   if (is.null(ind_str) || !ind_str %in% names(events)) {
     warning("Individual ID not provided or not found in 'event_data'. Defaulting to 'one_ind' model")
     subclass <- "one_ind"

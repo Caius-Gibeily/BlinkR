@@ -51,7 +51,7 @@ ppc_plot_all <- function(model, n_samples = 1000, palette = "Blues",prior=FALSE,
 #' @seealso [draw_traces()], [ppc_get_eventrate()], [ppc_get_interevent_dist()],
 #' [ppc_get_inst_eventrate().
 #' @export
-ppc_draw_events <- function(model, n_samples, prior = FALSE, resolution = 0.1) {
+ppc_draw_events <- function(model, n_samples, prior = FALSE, resolution = 0.05) {
 
   ppc_data <- draw_traces(model, n_samples = n_samples, prior = prior,
                            resolution = resolution)
@@ -73,7 +73,7 @@ ppc_draw_events <- function(model, n_samples, prior = FALSE, resolution = 0.1) {
   ppc_events <- samples |> group_split(sample) |>
     imap(\(samp,i) {
       ppc <- do.call(simulate_events,
-                         c(list(trace_data = samp, family = family, lerp = NULL),
+                         c(list(trace_data = samp, family = family, resolution = NULL),
                                 lapply(params, function(mat) mat[i])))
       ppc$events}
       ) |>
