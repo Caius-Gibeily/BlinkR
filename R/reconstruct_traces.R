@@ -24,6 +24,7 @@ reconstruct_traces <- function(model, level = c("ind","group","global"), prior =
 
   t_grid <- seq(0,model$settings$duration,
                 by = resolution)
+
   if (model$settings$kernel != "periodic") {
     phi_basis <- .phi(t_grid, M, L)
   } else {
@@ -224,7 +225,7 @@ draw_traces <- function(model = NULL,recon_data = NULL, level="ind",prior=FALSE,
   recon_data <- recon_data[!(names(recon_data) %in% c("level",".width"))]
 
   tidy_samples <- do.call(.tidy_samples,recon_data)
-
+  print("test")
   return(tidy_samples)
 }
 

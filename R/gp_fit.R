@@ -51,7 +51,7 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind"
                     error = function(e) NULL)
 
   if (missing(duration)) {
-    duration <- events %>% reframe(max_t = max(.data[[event_times_str]])) %>% pull(max_t)
+    duration <- events |> reframe(max_t = max(.data[[event_times_str]])) |> pull(max_t)
     warning("Setting duration to the latest event time. If this is incorrect, please set duration.")
   }
 
@@ -63,9 +63,9 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind"
     g_id <- rep(1, nrow(events))
     g_membership <- 1
   } else {
-    I <- events %>%
-      dplyr::distinct(.data[[ind_str]]) %>%
-      dplyr::pull() %>%
+    I <- events |>
+      dplyr::distinct(.data[[ind_str]]) |>
+      dplyr::pull() |>
       length()
 
     if (I == 1) {
@@ -75,7 +75,7 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind"
       g_id <- rep(1, nrow(events))
       g_membership <- 1
     } else {
-      ind_id <- events %>% dplyr::select(.data[[ind_str]]) %>%
+      ind_id <- events |> dplyr::select(.data[[ind_str]]) |>
         dplyr::pull()
       if (is.null(group_str) || !group_str %in% names(events)) {
         warning("Group ID not provided or not found in 'events'. Defaulting to 'one_group' model.")
@@ -86,11 +86,11 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind"
 
       } else {
 
-        G <- events %>%
-          dplyr::distinct(.data[[group_str]]) %>%
-          dplyr::pull() %>%
+        G <- events |>
+          dplyr::distinct(.data[[group_str]]) |>
+          dplyr::pull() |>
           length()
-        g_id <- events %>% dplyr::select(.data[[group_str]]) %>%
+        g_id <- events |> dplyr::select(.data[[group_str]]) |>
           dplyr::pull()
 
         if (G == 1) {
@@ -98,8 +98,8 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind"
           g_membership <- rep(1, I)
         } else {
           subclass <- "multi_group"
-          g_membership <- events %>%
-            distinct(.data[[group_str]],.data[[ind_str]]) %>%
+          g_membership <- events |>
+            distinct(.data[[group_str]],.data[[ind_str]]) |>
             pull(group)
 
         }
@@ -112,19 +112,19 @@ gp_fit.list <- function(event_data, duration, group_id = "group", ind_id = "ind"
   }
 
   if (is.null(dt_str) || !dt_str %in% names(events)) {
-    events <- events %>%
+    events <- events |>
       mutate(dt = c(0,diff(.data[[event_times_str]])))
   }
 
   model_data <- list(
-    event_times = events %>%
+    event_times = events |>
       pull(all_of(event_times_str)),
     traces = event_data$traces, # for simulations
     group_traces = event_data$group_traces,
     global_trace = event_data$global_trace,
     events = events |> rename(ind = .data[[ind_str]],
                               event_times = .data[[event_times_str]]),
-    dt = events %>% pull(all_of(dt_str)),
+    dt = events |> pull(all_of(dt_str)),
     ind_id = as.numeric(as.character(ind_id)),
     g_id = as.numeric(as.character(g_id)),
     g_membership = as.numeric(as.character(g_membership)),
@@ -175,7 +175,7 @@ gp_fit.gp_model <- function(model_data, ...) {
   }
 
   model_data$settings <- append(model_data$settings,
-                                 list(variables=prior_frame %>%
+                                 list(variables=prior_frame |>
                                         pull(prior_variable)))
   flags <- .get_flags(model_data)
 
@@ -239,7 +239,7 @@ gp_fit.gp_prior_pc <- function(prior_pc_data, ...) {
   }
 
   prior_pc_data$settings <- append(prior_pc_data$settings,
-                                   list(variables=prior_frame %>%
+                                   list(variables=prior_frame |>
                                           pull(prior_variable)))
 
   flags <- .get_flags(prior_pc_data)

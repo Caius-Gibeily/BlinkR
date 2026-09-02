@@ -130,7 +130,7 @@ simulate_events <- function(trace_data, group = group, ind = ind, family = c(
 
     trace_data$group_traces <- trace_data$group_traces |>
       group_by(group) |>
-      mutate(y_offset = y + baseline_groups) |>
+      mutate(y_offset = y + baseline_groups[group]) |>
       dplyr::ungroup()
 
     mu_inds <- as.list(setNames(baseline, paste0("mu_ind[", sim_struct$ind, "]")))
@@ -143,11 +143,7 @@ simulate_events <- function(trace_data, group = group, ind = ind, family = c(
     ))
 
     if (!is.null(trace_data$global_trace)) {
-      baseline_global <- sim_struct |>
-        dplyr::bind_cols(baseline = baseline) |>
-        group_by(group) |>
-        summarise(baseline = mean(baseline)) |>
-        dplyr::pull(baseline)
+      baseline_global <- mean(baseline)
 
       trace_data$global_trace <- trace_data$global_trace |>
         mutate(y_offset = y + baseline_global)
@@ -223,6 +219,7 @@ simulate_events <- function(trace_data, group = group, ind = ind, family = c(
 .simulate_renewal <- function(trace, modulant, shape, k, sigma, Q, resolution = 200) {
   if (!is.null(resolution)) {
     lerp <- 1 / resolution
+
     trace_parts <- trace |> pull({{ modulant }})
     trace_parts <- trace_parts |> approx(n = max(trace$x) * lerp)
 

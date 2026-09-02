@@ -51,7 +51,7 @@ ppc_plot_all <- function(model, n_samples = 1000, palette = "Blues",prior=FALSE,
 #' @seealso [draw_traces()], [ppc_get_eventrate()], [ppc_get_interevent_dist()],
 #' [ppc_get_inst_eventrate().
 #' @export
-ppc_draw_events <- function(model, n_samples, prior = FALSE, resolution = 0.05) {
+ppc_draw_events <- function(model, n_samples, prior = FALSE, resolution = 0.1) {
 
   ppc_data <- draw_traces(model, n_samples = n_samples, prior = prior,
                            resolution = resolution)

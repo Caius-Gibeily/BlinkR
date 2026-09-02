@@ -37,18 +37,21 @@ plot.sim_traces <- function(sim_data, level = c("individual", "group", "global")
 
   if (!is.null(sim_data$global_trace)) {
     global_data <- sim_data$global_trace
+
   } else if (!is.null(grp_data)) {
+
     x_col <- if ("x" %in% names(grp_data)) "x" else "time"
     y_col <- if ("y_offset" %in% names(grp_data)) "y_offset" else "y"
 
     global_data <- grp_data |>
       dplyr::group_by(.data[[x_col]]) |>
-      dplyr::summarise(y = mean(.data[[y_col]], na.rm = TRUE), .groups = "drop") |>
+      dplyr::summarise(y = mean(.data[[y_col]], na.rm = TRUE),
+                       .groups = "drop") |>
       dplyr::rename(x = 1)
   } else {
     global_data <- NULL
   }
-
+  print(global_data)
   event_data <- NULL
   if ("sim_events" %in% class(sim_data) && !is.null(sim_data$events)) {
     event_data <- sim_data$events
